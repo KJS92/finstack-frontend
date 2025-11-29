@@ -28,6 +28,10 @@ const Dashboard: React.FC = () => {
     navigate('/auth');
   };
 
+  const goToAccounts = () => {
+    navigate('/accounts');
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -42,31 +46,29 @@ const Dashboard: React.FC = () => {
       </header>
       
       <div className="dashboard-content">
-  <div className="welcome-card">
-    <h2>Welcome to FinStack! 🎉</h2>
-    <p>Email: {user?.email}</p>
-    <p className="success-message">
-      Your backend and frontend are successfully connected!
-    </p>
-    <button 
-      className="nav-button"
-      onClick={() => window.location.href = '/accounts'}
-    >
-      Manage Accounts →
-    </button>
-  </div>
-  
-  <div className="info-card">
-    <h3>What's Next?</h3>
-    <ul>
-      <li>✅ Week 1: Authentication Complete</li>
-      <li>🔄 Week 2: Account Management (In Progress)</li>
-      <li>Week 3: Transaction Upload & Parsing</li>
-      <li>Week 4: Categorization</li>
-      <li>Week 5: Budgets & Summaries</li>
-    </ul>
-  </div>
-</div>
+        <div className="welcome-card">
+          <h2>Welcome to FinStack! 🎉</h2>
+          <p>Email: {user?.email}</p>
+          <p className="success-message">
+            Your backend and frontend are successfully connected!
+          </p>
+          <button className="nav-button" onClick={goToAccounts}>
+            Manage Accounts →
+          </button>
+        </div>
+        
+        <div className="info-card">
+          <h3>What's Next?</h3>
+          <ul>
+            <li>✅ Week 1: Authentication Complete</li>
+            <li>🔄 Week 2: Account Management (In Progress)</li>
+            <li>Week 3: Transaction Upload & Parsing</li>
+            <li>Week 4: Categorization</li>
+            <li>Week 5: Budgets & Summaries</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   );
 };
 
