@@ -106,3 +106,20 @@
     font-size: 24px;
   }
 }
+.nav-button {
+  margin-top: 20px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.nav-button:hover {
+  transform: translateY(-2px);
+}
+
