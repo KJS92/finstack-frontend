@@ -1,201 +1,119 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
+import { accountService, Account, CreateAccountInput } from '../services/accountService';
 import './Accounts.css';
 
-interface Account {
-  id: string;
-  name: string;
-  type: string;
-  balance: number;
-  currency: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface AccountSummary {
-  total_balance: number;
-  by_type: {
-    [key: string]: {
-      count: number;
-      total_balance: number;
-    };
-  };
-}
-
 const Accounts: React.FC = () => {
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateAccountInput>({
     name: '',
     type: 'bank',
     balance: 0,
-    currency: 'INR'
+    account_number: '',
+    bank_name: '',
+    color: '#3B82F6'
   });
 
   useEffect(() => {
-    fetchAccounts();
-    fetchSummary();
+    checkUser();
+    loadAccounts();
   }, []);
 
-  const getAuthHeaders = async () => {
+  const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
-    
-    return {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json'
-    };
+    if (!session) {
+      navigate('/auth');
+    }
   };
 
-  const fetchAccounts = async () => {
+  const loadAccounts = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/accounts/`, {
-        headers
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAccounts(data);
-      }
-    } catch (error) {
-      console.error('Error fetching accounts:', error);
-      setMessage('Failed to load accounts');
+      setLoading(true);
+      const data = await accountService.getAccounts();
+      setAccounts(data);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchSummary = async () => {
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/accounts/summary/all`, {
-        headers
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSummary(data);
-      }
-    } catch (error) {
-      console.error('Error fetching summary:', error);
-    }
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage('');
-
-    try {
-      const headers = await getAuthHeaders();
-      
-      if (editingAccount) {
-        // Update existing account
-        const response = await fetch(
-          `${process.env.REACT_APP_BACKEND_URL}/api/accounts/${editingAccount.id}`,
-          {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify({
-              name: formData.name,
-              balance: formData.balance
-            })
-          }
-        );
-
-        if (response.ok) {
-          setMessage('Account updated successfully!');
-          setEditingAccount(null);
-        } else {
-          const error = await response.json();
-          setMessage(error.detail || 'Failed to update account');
-        }
-      } else {
-        // Create new account
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/accounts/`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(formData)
-        });
-
-        if (response.ok) {
-          setMessage('Account created successfully!');
-          setShowAddModal(false);
-        } else {
-          const error = await response.json();
-          setMessage(error.detail || 'Failed to create account');
-        }
-      }
-
-      // Refresh data
-      fetchAccounts();
-      fetchSummary();
-      resetForm();
-    } catch (error) {
-      setMessage('An error occurred');
-    }
+  const openCreateModal = () => {
+    setEditingAccount(null);
+    setFormData({
+      name: '',
+      type: 'bank',
+      balance: 0,
+      account_number: '',
+      bank_name: '',
+      color: '#3B82F6'
+    });
+    setShowModal(true);
   };
 
-  const handleDelete = async (accountId: string) => {
-    if (!window.confirm('Are you sure you want to delete this account?')) return;
-
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/accounts/${accountId}`,
-        {
-          method: 'DELETE',
-          headers
-        }
-      );
-
-      if (response.ok) {
-        setMessage('Account deleted successfully!');
-        fetchAccounts();
-        fetchSummary();
-      } else {
-        setMessage('Failed to delete account');
-      }
-    } catch (error) {
-      setMessage('An error occurred');
-    }
-  };
-
-  const handleEdit = (account: Account) => {
+  const openEditModal = (account: Account) => {
     setEditingAccount(account);
     setFormData({
       name: account.name,
       type: account.type,
       balance: account.balance,
-      currency: account.currency
+      account_number: account.account_number || '',
+      bank_name: account.bank_name || '',
+      color: account.color
     });
-    setShowAddModal(true);
+    setShowModal(true);
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      type: 'bank',
-      balance: 0,
-      currency: 'INR'
-    });
-    setEditingAccount(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      if (editingAccount) {
+        await accountService.updateAccount(editingAccount.id, formData);
+      } else {
+        await accountService.createAccount(formData);
+      }
+      setShowModal(false);
+      loadAccounts();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this account?')) return;
+
+    try {
+      await accountService.deleteAccount(id);
+      loadAccounts();
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   const getAccountIcon = (type: string) => {
-    switch (type) {
-      case 'bank': return '🏦';
-      case 'credit_card': return '💳';
-      case 'wallet': return '👛';
-      case 'upi': return '📱';
-      default: return '💰';
-    }
+    const icons: Record<string, string> = {
+      bank: '🏦',
+      credit_card: '💳',
+      savings: '💰',
+      investment: '📈',
+      wallet: '👛'
+    };
+    return icons[type] || '💼';
   };
 
   const formatCurrency = (amount: number) => {
@@ -205,84 +123,61 @@ const Accounts: React.FC = () => {
     }).format(amount);
   };
 
+  const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+
   if (loading) {
-    return <div className="loading">Loading accounts...</div>;
+    return <div className="accounts-container"><p>Loading accounts...</p></div>;
   }
 
   return (
     <div className="accounts-container">
-      <div className="accounts-header">
-        <h1>My Accounts</h1>
-        <button
-          className="add-button"
-          onClick={() => {
-            resetForm();
-            setShowAddModal(true);
-          }}
-        >
+      <header className="accounts-header">
+        <div>
+          <h1>My Accounts</h1>
+          <p className="total-balance">Total Balance: {formatCurrency(totalBalance)}</p>
+        </div>
+        <div className="header-actions">
+          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
+            Dashboard
+          </button>
+          <button onClick={handleLogout} className="btn-logout">
+            Logout
+          </button>
+        </div>
+      </header>
+
+      {error && <div className="error-message">{error}</div>}
+
+      <div className="accounts-actions">
+        <button onClick={openCreateModal} className="btn-primary">
           + Add Account
         </button>
       </div>
 
-      {message && (
-        <div className={`message ${message.includes('success') ? 'success' : 'error'}`}>
-          {message}
-        </div>
-      )}
-
-      {/* Summary Cards */}
-      {summary && (
-        <div className="summary-section">
-          <div className="summary-card total">
-            <h3>Total Balance</h3>
-            <p className="amount">{formatCurrency(summary.total_balance)}</p>
-          </div>
-          
-          {Object.entries(summary.by_type).map(([type, data]) => (
-            <div className="summary-card" key={type}>
-              <span className="icon">{getAccountIcon(type)}</span>
-              <div>
-                <h4>{type.replace('_', ' ').toUpperCase()}</h4>
-                <p className="count">{data.count} account(s)</p>
-                <p className="amount">{formatCurrency(data.total_balance)}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Accounts List */}
-      <div className="accounts-list">
+      <div className="accounts-grid">
         {accounts.length === 0 ? (
           <div className="empty-state">
-            <p>No accounts yet. Add your first account to get started!</p>
+            <p>No accounts yet. Create your first account to get started!</p>
           </div>
         ) : (
-          accounts.map((account) => (
-            <div className="account-card" key={account.id}>
-              <div className="account-icon">{getAccountIcon(account.type)}</div>
-              <div className="account-info">
+          accounts.map(account => (
+            <div key={account.id} className="account-card" style={{ borderLeftColor: account.color }}>
+              <div className="account-header">
+                <span className="account-icon">{getAccountIcon(account.type)}</span>
                 <h3>{account.name}</h3>
-                <p className="account-type">{account.type.replace('_', ' ').toUpperCase()}</p>
               </div>
-              <div className="account-balance">
-                <p className="amount">{formatCurrency(account.balance)}</p>
-                <p className="currency">{account.currency}</p>
-              </div>
+              <p className="account-type">{account.type.replace('_', ' ').toUpperCase()}</p>
+              {account.bank_name && <p className="account-bank">{account.bank_name}</p>}
+              {account.account_number && (
+                <p className="account-number">****{account.account_number.slice(-4)}</p>
+              )}
+              <p className="account-balance">{formatCurrency(account.balance)}</p>
               <div className="account-actions">
-                <button
-                  className="edit-btn"
-                  onClick={() => handleEdit(account)}
-                  title="Edit"
-                >
-                  ✏️
+                <button onClick={() => openEditModal(account)} className="btn-edit">
+                  Edit
                 </button>
-                <button
-                  className="delete-btn"
-                  onClick={() => handleDelete(account.id)}
-                  title="Delete"
-                >
-                  🗑️
+                <button onClick={() => handleDelete(account.id)} className="btn-delete">
+                  Delete
                 </button>
               </div>
             </div>
@@ -290,13 +185,9 @@ const Accounts: React.FC = () => {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
-      {showAddModal && (
-        <div className="modal-overlay" onClick={() => {
-          setShowAddModal(false);
-          resetForm();
-        }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h2>{editingAccount ? 'Edit Account' : 'Add New Account'}</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -304,7 +195,7 @@ const Accounts: React.FC = () => {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., HDFC Savings"
                   required
                 />
@@ -314,48 +205,63 @@ const Accounts: React.FC = () => {
                 <label>Account Type *</label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  disabled={!!editingAccount}
+                  onChange={e => setFormData({ ...formData, type: e.target.value as any })}
+                  required
                 >
                   <option value="bank">Bank Account</option>
                   <option value="credit_card">Credit Card</option>
+                  <option value="savings">Savings</option>
+                  <option value="investment">Investment</option>
                   <option value="wallet">Wallet</option>
-                  <option value="upi">UPI</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>Current Balance *</label>
+                <label>Bank Name</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  value={formData.balance}
-                  onChange={(e) => setFormData({ ...formData, balance: parseFloat(e.target.value) })}
-                  required
+                  type="text"
+                  value={formData.bank_name}
+                  onChange={e => setFormData({ ...formData, bank_name: e.target.value })}
+                  placeholder="e.g., HDFC Bank"
                 />
               </div>
 
               <div className="form-group">
-                <label>Currency</label>
+                <label>Account Number (Last 4 digits)</label>
                 <input
                   type="text"
-                  value={formData.currency}
-                  disabled
+                  value={formData.account_number}
+                  onChange={e => setFormData({ ...formData, account_number: e.target.value })}
+                  placeholder="e.g., 1234"
+                  maxLength={20}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Current Balance</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.balance}
+                  onChange={e => setFormData({ ...formData, balance: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Color</label>
+                <input
+                  type="color"
+                  value={formData.color}
+                  onChange={e => setFormData({ ...formData, color: e.target.value })}
                 />
               </div>
 
               <div className="modal-actions">
-                <button
-                  type="button"
-                  className="cancel-btn"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetForm();
-                  }}
-                >
+                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn">
+                <button type="submit" className="btn-primary">
                   {editingAccount ? 'Update' : 'Create'}
                 </button>
               </div>
