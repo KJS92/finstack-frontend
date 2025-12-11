@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import './UpdatePassword.css';
 
@@ -9,18 +9,50 @@ const UpdatePassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [hasValidToken, setHasValidToken] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    // Check if we have a valid session from the reset link
+    // Check for token in URL hash (from Supabase email link)
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setMessage('Invalid or expired reset link. Please request a new one.');
+      try {
+        // Get hash params from URL
+        const hashParams = new URLSearchParams(location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+          // Set the session with tokens from URL
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (error) {
+            setMessage('Invalid or expired reset link. Please request a new one.');
+            setHasValidToken(false);
+          } else {
+            setHasValidToken(true);
+          }
+        } else {
+          // Check if we already have a valid session
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            setHasValidToken(true);
+          } else {
+            setMessage('Invalid or expired reset link. Please request a new one.');
+            setHasValidToken(false);
+          }
+        }
+      } catch (error) {
+        setMessage('Error validating reset link. Please try again.');
+        setHasValidToken(false);
       }
     };
+    
     checkSession();
-  }, []);
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,8 +83,9 @@ const UpdatePassword: React.FC = () => {
       setIsSuccess(true);
       setMessage('Password updated successfully!');
       
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
+      // Sign out and redirect to login after 2 seconds
+      setTimeout(async () => {
+        await supabase.auth.signOut();
         navigate('/auth');
       }, 2000);
     } catch (error: any) {
@@ -61,6 +94,25 @@ const UpdatePassword: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (!hasValidToken && message) {
+    return (
+      <div className="update-password-container">
+        <div className="update-password-card">
+          <h1 className="update-title">Invalid Link</h1>
+          <div className="message error">
+            {message}
+          </div>
+          <button
+            className="update-button"
+            onClick={() => navigate('/password-reset')}
+          >
+            Request New Reset Link
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="update-password-container">
@@ -108,7 +160,7 @@ const UpdatePassword: React.FC = () => {
           </button>
         </form>
 
-        {message && (
+        {message && hasValidToken && (
           <div className={`message ${isSuccess ? 'success' : 'error'}`}>
             {message}
             {isSuccess && <p className="redirect-text">Redirecting to login...</p>}
