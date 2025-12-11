@@ -306,4 +306,10 @@
   }
 
   .accounts-grid {
-    grid-template-
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    padding: 20px;
+  }
+}
