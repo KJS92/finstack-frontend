@@ -13,56 +13,24 @@ const UpdatePassword: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
+    useEffect(() => {
     const checkSession = async () => {
-      try {
-        // Check current location for hash params
-        const currentHash = window.location.hash || location.hash;
-        const hashParams = new URLSearchParams(currentHash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
-        
-        console.log('Hash params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
-        
-        if (accessToken && refreshToken && type === 'recovery') {
-          // Set the session with tokens from URL
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-          
-          if (error) {
-            console.error('Session error:', error);
-            setMessage('Invalid or expired reset link. Please request a new one.');
-            setHasValidToken(false);
-          } else {
-            console.log('Session set successfully');
-            setHasValidToken(true);
-            // Clear the hash from URL for security
-            window.history.replaceState(null, '', '/update-password');
-          }
-        } else {
-          // Check if we already have a valid session
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            console.log('Existing session found');
-            setHasValidToken(true);
-          } else {
-            console.log('No valid session or token');
-            setMessage('Invalid or expired reset link. Please request a new one.');
-            setHasValidToken(false);
-          }
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        setMessage('Error validating reset link. Please try again.');
+      // Just check if we have a valid session (AuthHandler already set it)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        console.log('Valid session found');
+        setHasValidToken(true);
+      } else {
+        console.log('No valid session');
+        setMessage('Invalid or expired reset link. Please request a new one.');
         setHasValidToken(false);
       }
     };
     
     checkSession();
-  }, [location]);
+  }, []);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
