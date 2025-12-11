@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import PasswordReset from './pages/PasswordReset';
 import UpdatePassword from './pages/UpdatePassword';
+import AuthHandler from './components/AuthHandler';
 import './App.css';
 
 function App() {
