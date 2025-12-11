@@ -65,18 +65,30 @@ const Auth: React.FC = () => {
           </div>
           
           <div className="form-group">
+          <div className="password-label-row">
             <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              minLength={6}
-              disabled={loading}
-            />
+            {isLogin && (
+              <button
+                type="button"
+                onClick={() => navigate('/password-reset')}
+                className="forgot-password-link"
+              >
+                Forgot?
+              </button>
+            )}
           </div>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            placeholder="••••••••"
+            minLength={6}
+            disabled={loading}
+          />
+        </div>
+
           
           <button type="submit" className="auth-button" disabled={loading}>
             {loading ? 'Please wait...' : (isLogin ? 'Login' : 'Sign Up')}
