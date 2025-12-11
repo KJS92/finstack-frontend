@@ -28,11 +28,11 @@ const Accounts: React.FC = () => {
   }, []);
 
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-    }
-  };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    navigate('/auth');
+  }
+};
 
   const loadAccounts = async () => {
     try {
