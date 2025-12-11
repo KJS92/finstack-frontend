@@ -17,13 +17,14 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-    } else {
-      setUserEmail(session.user.email || '');
-    }
-  };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    navigate('/auth');
+  } else {
+    setUserEmail(session.user.email || '');
+  }
+};
+
 
   const loadDashboardData = async () => {
     try {
