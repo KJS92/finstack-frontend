@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 
 const AuthHandler: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    // Capture hash immediately before React Router can clear it
+    // Check for token in hash on ANY page
     const hash = window.location.hash;
     
     if (hash && hash.includes('access_token')) {
@@ -15,10 +16,16 @@ const AuthHandler: React.FC = () => {
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       
-      console.log('AuthHandler detected token:', { type, hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
+      console.log('AuthHandler detected:', { 
+        currentPath: location.pathname,
+        type, 
+        hasAccessToken: !!accessToken, 
+        hasRefreshToken: !!refreshToken 
+      });
       
       if (type === 'recovery' && accessToken && refreshToken) {
-        // This is a password reset link
+        console.log('Password recovery detected, setting session...');
+        
         // Set the session immediately
         supabase.auth.setSession({
           access_token: accessToken,
@@ -28,15 +35,19 @@ const AuthHandler: React.FC = () => {
             console.error('Error setting session:', error);
             navigate('/password-reset');
           } else {
-            console.log('Session set, navigating to update-password');
-            // Clear hash and navigate
-            window.history.replaceState(null, '', '/update-password');
+            console.log('Session set successfully! Navigating to update-password');
+            // Navigate to update-password page
             navigate('/update-password', { replace: true });
+            // Clean up URL
+            window.history.replaceState({}, document.title, '/update-password');
           }
+        }).catch(err => {
+          console.error('Catch error:', err);
+          navigate('/password-reset');
         });
       }
     }
-  }, []); // Empty dependency array - run only once on mount
+  }, [location, navigate]);
 
   return null;
 };
