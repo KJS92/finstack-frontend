@@ -4,6 +4,7 @@ import { supabase } from './config/supabase';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
+import Profile from './pages/Profile';
 import PasswordReset from './pages/PasswordReset';
 import UpdatePassword from './pages/UpdatePassword';
 import AuthHandler from './components/AuthHandler';
@@ -51,6 +52,7 @@ function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/accounts" element={<Accounts />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/password-reset" element={<PasswordReset />} />
           <Route path="/update-password" element={<UpdatePassword />} />
         </Routes>
