@@ -82,10 +82,10 @@ const TransactionsList: React.FC = () => {
     });
   };
 
-  const getAccountName = (accountId: string | null) => {
-    if (!accountId) return 'Unknown';
+    const getAccountName = (accountId: string | null) => {
+    if (!accountId) return 'No Account';
     const account = accounts.find(a => a.id === accountId);
-    return account?.name || 'Unknown';
+    return account?.name || `Account (${accountId.substring(0, 8)}...)`;
   };
 
   if (loading) {
