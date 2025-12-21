@@ -1,3 +1,5 @@
+import * as XLSX from 'xlsx';
+
 export interface ParsedTransaction {
   date: string;
   description: string;
@@ -18,16 +20,81 @@ export interface ParseResult {
 }
 
 export const transactionParser = {
+  // Main parse function - detects file type
+  async parseFile(file: File): Promise<ParseResult> {
+    const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    if (extension === '.csv') {
+      return this.parseCSV(file);
+    } else if (extension === '.xls' || extension === '.xlsx') {
+      return this.parseExcel(file);
+    } else {
+      return {
+        success: false,
+        transactions: [],
+        error: 'Unsupported file format. Please upload CSV or Excel files.',
+        summary: { total: 0, credits: 0, debits: 0 }
+      };
+    }
+  },
+
+  // Parse Excel file
+  async parseExcel(file: File): Promise<ParseResult> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // Get first sheet
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          
+          // Convert to CSV format
+          const csvText = XLSX.utils.sheet_to_csv(firstSheet);
+          
+          // Parse as CSV
+          const transactions = this.parseCSVText(csvText);
+          const summary = this.calculateSummary(transactions);
+          
+          resolve({
+            success: true,
+            transactions,
+            summary
+          });
+        } catch (error: any) {
+          resolve({
+            success: false,
+            transactions: [],
+            error: error.message,
+            summary: { total: 0, credits: 0, debits: 0 }
+          });
+        }
+      };
+
+      reader.onerror = () => {
+        resolve({
+          success: false,
+          transactions: [],
+          error: 'Failed to read file',
+          summary: { total: 0, credits: 0, debits: 0 }
+        });
+      };
+
+      reader.readAsArrayBuffer(file);
+    });
+  },
+
   // Parse CSV file
   async parseCSV(file: File): Promise<ParseResult> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
 
       reader.onload = (e) => {
         try {
           const text = e.target?.result as string;
           const transactions = this.parseCSVText(text);
-          
           const summary = this.calculateSummary(transactions);
           
           resolve({
@@ -58,15 +125,17 @@ export const transactionParser = {
     });
   },
 
-  // Parse CSV text content
+  // Rest of the functions remain the same...
   parseCSVText(text: string): ParsedTransaction[] {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length < 2) {
       throw new Error('File appears to be empty or invalid');
     }
 
-    // Get headers - handle both comma and tab separated
-    const separator = lines[0].includes('\t') ? '\t' : ',';
+    // Detect separator (comma, tab, or semicolon)
+    const separator = lines[0].includes('\t') ? '\t' : 
+                     lines[0].includes(';') ? ';' : ',';
+    
     const headers = lines[0].split(separator).map(h => h.trim());
     
     const dateIndex = this.findColumnIndex(headers, [
@@ -103,7 +172,6 @@ export const transactionParser = {
 
     const transactions: ParsedTransaction[] = [];
 
-    // Parse data rows (skip header)
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
@@ -118,12 +186,10 @@ export const transactionParser = {
 
       if (!dateStr || !description) continue;
 
-      // Parse amounts
       const debitAmount = this.parseAmount(debitStr);
       const creditAmount = this.parseAmount(creditStr);
       const balance = this.parseAmount(balanceStr);
 
-      // Determine transaction type and amount
       let amount: number;
       let type: 'debit' | 'credit';
 
@@ -134,7 +200,7 @@ export const transactionParser = {
         amount = creditAmount;
         type = 'credit';
       } else {
-        continue; // Skip if no amount found
+        continue;
       }
 
       transactions.push({
@@ -153,7 +219,6 @@ export const transactionParser = {
     return transactions;
   },
 
-  // Find column index by possible names
   findColumnIndex(headers: string[], possibleNames: string[]): number {
     const normalizedHeaders = headers.map(h => 
       h.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
@@ -170,56 +235,41 @@ export const transactionParser = {
     return -1;
   },
 
-  // Parse amount string to number
   parseAmount(str: string): number {
     if (!str || str === '') return 0;
-    
-    // Remove currency symbols, commas, and whitespace
     const cleaned = str.replace(/[₹$,\s]/g, '');
     const num = parseFloat(cleaned);
-    
     return isNaN(num) ? 0 : Math.abs(num);
   },
 
-  // Parse date string to ISO format
   parseDate(dateStr: string): string {
-    // Try different date formats
     const formats = [
-      /(\d{1,2})-(\d{1,2})-(\d{4})/,   // DD-MM-YYYY
-      /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // DD/MM/YYYY or MM/DD/YYYY
-      /(\d{4})-(\d{1,2})-(\d{1,2})/,   // YYYY-MM-DD
+      /(\d{1,2})-(\d{1,2})-(\d{4})/,
+      /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
+      /(\d{4})-(\d{1,2})-(\d{1,2})/,
     ];
 
     for (const format of formats) {
       const match = dateStr.match(format);
       if (match) {
-        // DD-MM-YYYY format (your format)
-        if (format === formats[0]) {
+        if (format === formats[0] || format === formats[1]) {
           const [, day, month, year] = match;
           return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         }
-        // DD/MM/YYYY format
-        if (format === formats[1]) {
-          const [, day, month, year] = match;
-          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        }
-        // Already in YYYY-MM-DD format
         if (format === formats[2]) {
           return dateStr;
         }
       }
     }
 
-    // Fallback: try to parse as Date
     const date = new Date(dateStr);
     if (!isNaN(date.getTime())) {
       return date.toISOString().split('T')[0];
     }
 
-    return new Date().toISOString().split('T')[0]; // Fallback to today
+    return new Date().toISOString().split('T')[0];
   },
 
-  // Calculate summary statistics
   calculateSummary(transactions: ParsedTransaction[]) {
     const credits = transactions
       .filter(t => t.type === 'credit')
@@ -236,3 +286,4 @@ export const transactionParser = {
     };
   }
 };
+
