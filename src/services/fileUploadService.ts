@@ -44,31 +44,38 @@ export const fileUploadService = {
     return filePath;
   },
 
-  // Create upload record
-  async createUploadRecord(data: {
-    file_name: string;
-    file_type: string;
-    file_size: number;
-    file_path: string;
-    account_id: string;
-  }): Promise<FileUploadRecord> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data: record, error } = await supabase
-      .from('file_uploads')
-      .insert([{
-        user_id: user.id,
-        ...data,
-        status: 'pending'
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return record;
-  },
-
+      // Create upload record
+    async createUploadRecord(data: {
+      file_name: string;
+      file_type: string;
+      file_size: number;
+      file_path: string;
+      account_id: string;
+    }): Promise<FileUploadRecord> {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+    
+      // Truncate file_type if too long
+      const fileType = data.file_type.length > 100 ? data.file_type.substring(0, 100) : data.file_type;
+    
+      const { data: record, error } = await supabase
+        .from('file_uploads')
+        .insert([{
+          user_id: user.id,
+          file_name: data.file_name,
+          file_type: fileType,  // Use truncated version
+          file_size: data.file_size,
+          file_path: data.file_path,
+          account_id: data.account_id,
+          status: 'pending'
+        }])
+        .select()
+        .single();
+    
+      if (error) throw error;
+      return record;
+    }
+  
   // Get user's upload history
   async getUploadHistory(): Promise<FileUploadRecord[]> {
     const { data, error } = await supabase
