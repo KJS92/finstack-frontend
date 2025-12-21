@@ -76,13 +76,16 @@ const Dashboard: React.FC = () => {
           <p className="user-email">{userEmail}</p>
         </div>
         <div className="header-actions">
-          <button onClick={() => navigate('/accounts')} className="btn-secondary">
-            Manage Accounts
-          </button>
-          <button onClick={handleLogout} className="btn-logout">
-            Logout
-          </button>
-        </div>
+        <button onClick={() => navigate('/profile')} className="btn-secondary">
+          Profile
+        </button>
+        <button onClick={() => navigate('/accounts')} className="btn-secondary">
+          Manage Accounts
+        </button>
+        <button onClick={handleLogout} className="btn-logout">
+          Logout
+        </button>
+      </div>
       </header>
 
       <div className="dashboard-summary">
