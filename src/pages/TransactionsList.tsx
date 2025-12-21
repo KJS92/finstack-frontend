@@ -30,13 +30,14 @@ const TransactionsList: React.FC = () => {
   };
 
   const loadData = async () => {
-    try {
-      const accountsData = await accountService.getAccounts();
-      setAccounts(accountsData);
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+  try {
+    const accountsData = await accountService.getAccounts();
+    console.log('Loaded accounts:', accountsData); // Add this line
+    setAccounts(accountsData);
+  } catch (err: any) {
+    setError(err.message);
+  }
+};
 
   const loadTransactions = async () => {
     try {
