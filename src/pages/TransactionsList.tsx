@@ -14,31 +14,39 @@ const TransactionsList: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    checkUser();
-    loadData();
-  }, []);
+  checkUser();
+  loadData();
+}, []);
 
-  useEffect(() => {
-    loadTransactions();
-  }, [selectedAccount]);
+// Remove the second useEffect with selectedAccount dependency
 
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-    }
-  };
-
-  const loadData = async () => {
+const loadData = async () => {
   try {
+    setLoading(true);
+    
+    // Load accounts FIRST
     const accountsData = await accountService.getAccounts();
-    console.log('Loaded accounts:', accountsData); // Add this line
     setAccounts(accountsData);
+    
+    // Then load transactions
+    const accountId = selectedAccount === 'all' ? undefined : selectedAccount;
+    const transactionsData = await transactionService.getTransactions(accountId);
+    setTransactions(transactionsData);
+    
   } catch (err: any) {
     setError(err.message);
+  } finally {
+    setLoading(false);
   }
 };
 
+  // Add separate function for filter changes
+  useEffect(() => {
+    if (accounts.length > 0) {
+      loadTransactions();
+    }
+  }, [selectedAccount]);
+  
   const loadTransactions = async () => {
     try {
       setLoading(true);
@@ -51,7 +59,7 @@ const TransactionsList: React.FC = () => {
       setLoading(false);
     }
   };
-
+  
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this transaction?')) return;
 
