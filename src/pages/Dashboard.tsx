@@ -76,6 +76,9 @@ const Dashboard: React.FC = () => {
           <p className="user-email">{userEmail}</p>
         </div>
         <div className="header-actions">
+        <button onClick={() => navigate('/transactions')} className="btn-primary">
+          Upload Transactions
+        </button>
         <button onClick={() => navigate('/profile')} className="btn-secondary">
           Profile
         </button>
