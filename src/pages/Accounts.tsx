@@ -140,6 +140,9 @@ const Accounts: React.FC = () => {
           <button onClick={() => navigate('/dashboard')} className="btn-secondary">
             Dashboard
           </button>
+          <button onClick={() => navigate('/profile')} className="btn-secondary">
+            Profile
+          </button>
           <button onClick={handleLogout} className="btn-logout">
             Logout
           </button>
