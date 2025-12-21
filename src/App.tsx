@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Profile from './pages/Profile';
 import Transactions from './pages/Transactions';
+import TransactionPreview from './pages/TransactionPreview';
+import TransactionsList from './pages/TransactionsList';
 import PasswordReset from './pages/PasswordReset';
 import UpdatePassword from './pages/UpdatePassword';
 import AuthHandler from './components/AuthHandler';
@@ -54,6 +56,8 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/transactions" element={<Transactions />} />
+          <Route path="/transaction-preview" element={<TransactionPreview />} />
+          <Route path="/transactions-list" element={<TransactionsList />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/password-reset" element={<PasswordReset />} />
           <Route path="/update-password" element={<UpdatePassword />} />
