@@ -53,33 +53,37 @@ const Transactions: React.FC = () => {
     setError('');
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
+    const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !selectedAccount) {
       setError('Please select both a file and an account');
       return;
     }
-
+  
     try {
       setUploading(true);
       setError('');
       setSuccess('');
-
-      await fileUploadService.uploadFile(file, selectedAccount);
+  
+      // Find account name for display
+      const account = accounts.find(a => a.id === selectedAccount);
       
-      setSuccess('File uploaded successfully! Processing will begin shortly.');
-      setFile(null);
-      
-      // Reset file input
-      const fileInput = document.getElementById('file-input') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
+      // Navigate to preview page with file data
+      navigate('/transaction-preview', {
+        state: {
+          file: file,
+          accountId: selectedAccount,
+          accountName: account?.name || 'Unknown Account'
+        }
+      });
       
     } catch (err: any) {
-      setError(err.message || 'Failed to upload file');
+      setError(err.message || 'Failed to process file');
     } finally {
       setUploading(false);
     }
   };
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
