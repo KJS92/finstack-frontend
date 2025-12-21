@@ -65,16 +65,40 @@ export const transactionParser = {
       throw new Error('File appears to be empty or invalid');
     }
 
-    // Get headers
-    const headers = this.parseCSVLine(lines[0]);
-    const dateIndex = this.findColumnIndex(headers, ['date', 'transaction date', 'txn date']);
-    const descIndex = this.findColumnIndex(headers, ['description', 'narration', 'particulars', 'details']);
-    const debitIndex = this.findColumnIndex(headers, ['debit', 'withdrawal', 'debit amount']);
-    const creditIndex = this.findColumnIndex(headers, ['credit', 'deposit', 'credit amount']);
-    const balanceIndex = this.findColumnIndex(headers, ['balance', 'closing balance', 'available balance']);
+    // Get headers - handle both comma and tab separated
+    const separator = lines[0].includes('\t') ? '\t' : ',';
+    const headers = lines[0].split(separator).map(h => h.trim());
+    
+    const dateIndex = this.findColumnIndex(headers, [
+      'date', 'transaction date', 'txn date', 'trans date', 'value date', 
+      'posting date', 'txndate', 'transdate', 'dt'
+    ]);
+    const descIndex = this.findColumnIndex(headers, [
+      'description', 'narration', 'particulars', 'details', 'transaction details',
+      'desc', 'remarks', 'transaction description', 'txn description'
+    ]);
+    const debitIndex = this.findColumnIndex(headers, [
+      'debit', 'withdrawal', 'debit amount', 'withdrawals', 'debit amt',
+      'dr', 'withdrawal amount', 'debits', 'debit (₹)', 'debit(₹)'
+    ]);
+    const creditIndex = this.findColumnIndex(headers, [
+      'credit', 'deposit', 'credit amount', 'deposits', 'credit amt',
+      'cr', 'deposit amount', 'credits', 'credit (₹)', 'credit(₹)'
+    ]);
+    const balanceIndex = this.findColumnIndex(headers, [
+      'balance', 'closing balance', 'available balance', 'running balance',
+      'bal', 'available bal', 'closing bal', 'balance (₹)', 'balance(₹)'
+    ]);
 
     if (dateIndex === -1 || descIndex === -1) {
-      throw new Error('Could not find required columns (Date and Description)');
+      const headerList = headers.join(', ');
+      throw new Error(
+        `Could not find required columns. Found headers: ${headerList}`
+      );
+    }
+
+    if (debitIndex === -1 && creditIndex === -1) {
+      throw new Error('Could not find Debit or Credit columns');
     }
 
     const transactions: ParsedTransaction[] = [];
@@ -84,7 +108,7 @@ export const transactionParser = {
       const line = lines[i].trim();
       if (!line) continue;
 
-      const columns = this.parseCSVLine(line);
+      const columns = line.split(separator).map(col => col.trim());
       
       const dateStr = columns[dateIndex]?.trim();
       const description = columns[descIndex]?.trim();
@@ -129,35 +153,17 @@ export const transactionParser = {
     return transactions;
   },
 
-  // Parse a single CSV line (handles quoted values)
-  parseCSVLine(line: string): string[] {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    result.push(current);
-    return result;
-  },
-
   // Find column index by possible names
   findColumnIndex(headers: string[], possibleNames: string[]): number {
-    const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+    const normalizedHeaders = headers.map(h => 
+      h.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+    );
     
     for (const name of possibleNames) {
-      const index = normalizedHeaders.findIndex(h => h.includes(name.toLowerCase()));
+      const normalizedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const index = normalizedHeaders.findIndex(h => 
+        h === normalizedName || h.includes(normalizedName) || normalizedName.includes(h)
+      );
       if (index !== -1) return index;
     }
     
@@ -166,7 +172,7 @@ export const transactionParser = {
 
   // Parse amount string to number
   parseAmount(str: string): number {
-    if (!str) return 0;
+    if (!str || str === '') return 0;
     
     // Remove currency symbols, commas, and whitespace
     const cleaned = str.replace(/[₹$,\s]/g, '');
@@ -179,27 +185,27 @@ export const transactionParser = {
   parseDate(dateStr: string): string {
     // Try different date formats
     const formats = [
+      /(\d{1,2})-(\d{1,2})-(\d{4})/,   // DD-MM-YYYY
       /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // DD/MM/YYYY or MM/DD/YYYY
       /(\d{4})-(\d{1,2})-(\d{1,2})/,   // YYYY-MM-DD
-      /(\d{1,2})-(\d{1,2})-(\d{4})/,   // DD-MM-YYYY
     ];
 
     for (const format of formats) {
       const match = dateStr.match(format);
       if (match) {
-        // Assume DD/MM/YYYY for slash format
+        // DD-MM-YYYY format (your format)
         if (format === formats[0]) {
           const [, day, month, year] = match;
           return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         }
-        // Already in correct format
+        // DD/MM/YYYY format
         if (format === formats[1]) {
-          return dateStr;
-        }
-        // DD-MM-YYYY
-        if (format === formats[2]) {
           const [, day, month, year] = match;
           return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        // Already in YYYY-MM-DD format
+        if (format === formats[2]) {
+          return dateStr;
         }
       }
     }
