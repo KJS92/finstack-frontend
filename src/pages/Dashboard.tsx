@@ -88,6 +88,9 @@ const Dashboard: React.FC = () => {
         <button onClick={handleLogout} className="btn-logout">
           Logout
         </button>
+          <button onClick={() => navigate('/add-transaction')} className="btn-primary">
+        Add Transaction
+      </button>
       </div>
       </header>
 
