@@ -36,7 +36,7 @@ class TransactionService {
   }
 
   async importTransactions(
-    transactions: Transaction[],
+    transactions: any[],
     accountId: string,
     fileName: string
   ): Promise<void> {
