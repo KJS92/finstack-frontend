@@ -39,62 +39,64 @@ const Transactions: React.FC = () => {
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const selectedFile = e.target.files?.[0];
-  if (!selectedFile) return;
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
 
-  if (!selectedAccount) {
-    setError('Please select an account first');
-    return;
-  }
-
-  try {
-    setError('');
-    setUploading(true);
-
-    // Read file as text
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const fileContent = event.target?.result as string;
-        
-        if (!fileContent) {
-          throw new Error('Failed to read file content');
-        }
-
-        // Navigate to preview with file content as string
-        navigate('/transaction-preview', {
-          state: {
-            file: fileContent,  // Pass as string, not File object
-            accountId: selectedAccount,
-            accountName: accounts.find(a => a.id === selectedAccount)?.name,
-            fileName: selectedFile.name
-          }
-        });
-      } catch (err: any) {
-        setError(err.message || 'Failed to process file');
-        setUploading(false);
-      }
-    };
-
-    reader.onerror = () => {
-      setError('Failed to read file');
-      setUploading(false);
-    };
-
-    // Read as text for CSV
-    if (selectedFile.name.endsWith('.csv')) {
-      reader.readAsText(selectedFile);
-    } else {
-      setError('Only CSV files are supported at the moment');
-      setUploading(false);
+    if (!selectedAccount) {
+      setError('Please select an account first');
+      return;
     }
 
-  } catch (err: any) {
-    setError(err.message || 'Failed to upload file');
-    setUploading(false);
-  }
-};
+    // Update file state for UI
+    setFile(selectedFile);
 
+    try {
+      setError('');
+      setUploading(true);
+
+      // Read file as text
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const fileContent = event.target?.result as string;
+          
+          if (!fileContent) {
+            throw new Error('Failed to read file content');
+          }
+
+          // Navigate to preview with file content as string
+          navigate('/transaction-preview', {
+            state: {
+              file: fileContent,  // Pass as string, not File object
+              accountId: selectedAccount,
+              accountName: accounts.find(a => a.id === selectedAccount)?.name,
+              fileName: selectedFile.name
+            }
+          });
+        } catch (err: any) {
+          setError(err.message || 'Failed to process file');
+          setUploading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        setError('Failed to read file');
+        setUploading(false);
+      };
+
+      // Read as text for CSV
+      if (selectedFile.name.endsWith('.csv')) {
+        reader.readAsText(selectedFile);
+      } else {
+        setError('Only CSV files are supported at the moment');
+        setUploading(false);
+      }
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload file');
+      setUploading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -138,7 +140,7 @@ const Transactions: React.FC = () => {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleUpload} className="upload-form">
+            <div className="upload-form">
               <div className="form-group">
                 <label>Select Account</label>
                 <select
@@ -161,6 +163,7 @@ const Transactions: React.FC = () => {
                   type="file"
                   accept=".csv,.xls,.xlsx,.pdf"
                   onChange={handleFileSelect}
+                  disabled={uploading}
                   required
                 />
                 {file && (
@@ -173,14 +176,12 @@ const Transactions: React.FC = () => {
                 )}
               </div>
 
-              <button 
-                type="submit" 
-                className="btn-primary btn-large" 
-                disabled={uploading || !file}
-              >
-                {uploading ? 'Uploading...' : 'Upload Statement'}
-              </button>
-            </form>
+              {uploading && (
+                <div className="uploading-message">
+                  Processing file... Please wait.
+                </div>
+              )}
+            </div>
           )}
         </div>
 
