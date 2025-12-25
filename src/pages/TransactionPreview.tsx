@@ -87,7 +87,7 @@ const TransactionPreview: React.FC = () => {
       // Note: We'd need to track the upload ID for this to work properly
       // For now, just navigate to success
 
-      alert(`Successfully imported ${count} transactions!`);
+      alert(`Successfully imported ${transactions.length} transactions!`);
       navigate('/transactions-list');
     } catch (err: any) {
       setError(err.message || 'Failed to import transactions');
