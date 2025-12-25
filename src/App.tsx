@@ -12,6 +12,9 @@ import PasswordReset from './pages/PasswordReset';
 import UpdatePassword from './pages/UpdatePassword';
 import AuthHandler from './components/AuthHandler';
 import './App.css';
+import AddTransaction from './pages/AddTransaction';
+// Inside <Routes>
+<Route path="/add-transaction" element={<AddTransaction />} />
 
 function App() {
   const [loading, setLoading] = useState(true);
