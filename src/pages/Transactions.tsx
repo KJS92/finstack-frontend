@@ -38,51 +38,62 @@ const Transactions: React.FC = () => {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const selectedFile = e.target.files?.[0];
+  if (!selectedFile) return;
 
-    const validation = fileUploadService.validateFile(selectedFile);
-    if (!validation.valid) {
-      setError(validation.error || 'Invalid file');
-      setFile(null);
-      return;
-    }
+  if (!selectedAccount) {
+    setError('Please select an account first');
+    return;
+  }
 
-    setFile(selectedFile);
+  try {
     setError('');
-  };
+    setUploading(true);
 
-    const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file || !selectedAccount) {
-      setError('Please select both a file and an account');
-      return;
-    }
-  
-    try {
-      setUploading(true);
-      setError('');
-      setSuccess('');
-  
-      // Find account name for display
-      const account = accounts.find(a => a.id === selectedAccount);
-      
-      // Navigate to preview page with file data
-      navigate('/transaction-preview', {
-        state: {
-          file: file,
-          accountId: selectedAccount,
-          accountName: account?.name || 'Unknown Account'
+    // Read file as text
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const fileContent = event.target?.result as string;
+        
+        if (!fileContent) {
+          throw new Error('Failed to read file content');
         }
-      });
-      
-    } catch (err: any) {
-      setError(err.message || 'Failed to process file');
-    } finally {
+
+        // Navigate to preview with file content as string
+        navigate('/transaction-preview', {
+          state: {
+            file: fileContent,  // Pass as string, not File object
+            accountId: selectedAccount,
+            accountName: accounts.find(a => a.id === selectedAccount)?.name,
+            fileName: selectedFile.name
+          }
+        });
+      } catch (err: any) {
+        setError(err.message || 'Failed to process file');
+        setUploading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setError('Failed to read file');
+      setUploading(false);
+    };
+
+    // Read as text for CSV
+    if (selectedFile.name.endsWith('.csv')) {
+      reader.readAsText(selectedFile);
+    } else {
+      setError('Only CSV files are supported at the moment');
       setUploading(false);
     }
-  };
+
+  } catch (err: any) {
+    setError(err.message || 'Failed to upload file');
+    setUploading(false);
+  }
+};
 
 
   const handleLogout = async () => {
