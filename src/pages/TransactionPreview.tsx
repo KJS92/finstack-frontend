@@ -15,8 +15,8 @@ const TransactionPreview: React.FC = () => {
   const [error, setError] = useState('');
   const [summary, setSummary] = useState({ total: 0, credits: 0, debits: 0 });
 
-  // Get file and account from navigation state
-  const { file, accountId, accountName } = location.state || {};
+  // Get file content and account from navigation state
+  const { file, accountId, accountName, fileName } = location.state || {};
 
   useEffect(() => {
     checkUser();
@@ -40,7 +40,7 @@ const TransactionPreview: React.FC = () => {
       setLoading(true);
       setError('');
 
-      // Parse the file content
+      // Parse the file content (file is now a string)
       const parsedTransactions = transactionParser.parseCSV(file);
       setTransactions(parsedTransactions);
 
@@ -77,7 +77,7 @@ const TransactionPreview: React.FC = () => {
       await transactionService.importTransactions(
         transactions,
         accountId,
-        file.name
+        fileName
       );
 
       alert(`Successfully imported ${transactions.length} transactions!`);
@@ -125,7 +125,7 @@ const TransactionPreview: React.FC = () => {
         <div>
           <h1>Transaction Preview</h1>
           <p className="account-info">
-            Account: <strong>{accountName}</strong> • File: <strong>{file?.name}</strong>
+            Account: <strong>{accountName}</strong> • File: <strong>{fileName}</strong>
           </p>
         </div>
         <div className="header-actions">
