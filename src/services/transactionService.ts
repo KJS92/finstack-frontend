@@ -1,5 +1,4 @@
 import { supabase } from '../config/supabase';
-import { ParsedTransaction } from './transactionParser';
 
 export interface Transaction {
   id: string;
@@ -7,52 +6,23 @@ export interface Transaction {
   account_id: string | null;
   transaction_date: string;
   description: string;
-  amount: number;
   transaction_type: 'debit' | 'credit';
+  amount: number;
   balance: number | null;
   category: string | null;
-  notes: string | null;
   is_verified: boolean;
-  source_file: string | null;
   created_at: string;
 }
 
-export const transactionService = {
-  // Import transactions to database
-  async importTransactions(
-    transactions: ParsedTransaction[],
-    accountId: string,
-    sourceFile: string
-  ): Promise<number> {
+class TransactionService {
+  async getTransactions(accountId?: string): Promise<Transaction[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const records = transactions.map(t => ({
-      user_id: user.id,
-      account_id: accountId,
-      transaction_date: t.date,
-      description: t.description,
-      amount: t.amount,
-      transaction_type: t.type,
-      balance: t.balance || null,
-      source_file: sourceFile,
-      is_verified: false
-    }));
-
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert(records)
-      .select();
-
-    if (error) throw error;
-    return data?.length || 0;
-  },
-
-  // Get all transactions
-  async getTransactions(accountId?: string): Promise<Transaction[]> {
     let query = supabase
       .from('transactions')
       .select('*')
+      .eq('user_id', user.id)
       .order('transaction_date', { ascending: false });
 
     if (accountId) {
@@ -60,42 +30,96 @@ export const transactionService = {
     }
 
     const { data, error } = await query;
+
     if (error) throw error;
     return data || [];
-  },
+  }
 
-  // Get transaction by ID
-  async getTransaction(id: string): Promise<Transaction> {
-    const { data, error } = await supabase
+  async importTransactions(
+    transactions: Transaction[],
+    accountId: string,
+    fileName: string
+  ): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const transactionsToInsert = transactions.map(t => ({
+      user_id: user.id,
+      account_id: accountId,
+      transaction_date: t.transaction_date,
+      description: t.description,
+      transaction_type: t.transaction_type,
+      amount: t.amount,
+      balance: t.balance,
+      category: t.category || 'Uncategorized'
+    }));
+
+    const { error: insertError } = await supabase
       .from('transactions')
-      .select('*')
-      .eq('id', id)
+      .insert(transactionsToInsert);
+
+    if (insertError) throw insertError;
+
+    // Update account balance to closing balance
+    await this.updateAccountBalance(accountId);
+
+    // Record file upload
+    const { error: fileError } = await supabase
+      .from('file_uploads')
+      .insert({
+        user_id: user.id,
+        account_id: accountId,
+        file_name: fileName,
+        status: 'completed'
+      });
+
+    if (fileError) throw fileError;
+  }
+
+  async updateAccountBalance(accountId: string): Promise<void> {
+    // Get the most recent transaction for this account
+    const { data: latestTransaction, error } = await supabase
+      .from('transactions')
+      .select('balance')
+      .eq('account_id', accountId)
+      .order('transaction_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
-    if (error) throw error;
-    return data;
-  },
+    if (error || !latestTransaction?.balance) return;
 
-  // Update transaction
-  async updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction> {
-    const { data, error } = await supabase
-      .from('transactions')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+    // Update account balance
+    await supabase
+      .from('accounts')
+      .update({ balance: latestTransaction.balance })
+      .eq('id', accountId);
+  }
 
-    if (error) throw error;
-    return data;
-  },
-
-  // Delete transaction
   async deleteTransaction(id: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Get transaction details before deleting
+    const { data: transaction } = await supabase
+      .from('transactions')
+      .select('account_id')
+      .eq('id', id)
+      .single();
+
     const { error } = await supabase
       .from('transactions')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (error) throw error;
+
+    // Update account balance after deletion
+    if (transaction?.account_id) {
+      await this.updateAccountBalance(transaction.account_id);
+    }
   }
-};
+}
+
+export const transactionService = new TransactionService();
