@@ -63,20 +63,6 @@ class TransactionService {
     // Update account balance to closing balance
     await this.updateAccountBalance(accountId);
 
-    // Record file upload
-    const fileType = fileName.split('.').pop()?.toLowerCase() || 'csv';
-    
-    const { error: fileError } = await supabase
-      .from('file_uploads')
-      .insert({
-        user_id: user.id,
-        account_id: accountId,
-        file_name: fileName,
-        file_type: fileType,
-        status: 'completed',
-        uploaded_at: new Date().toISOString()
-      });
-
     if (fileError) throw fileError;
   }
 
