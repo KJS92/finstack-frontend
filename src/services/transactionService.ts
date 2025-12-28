@@ -202,50 +202,68 @@ class TransactionService {
   }
 
   async recalculateBalances(accountId: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
 
-    const { data: transactions, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('account_id', accountId)
-      .order('transaction_date', { ascending: true })
-      .order('created_at', { ascending: true });
+  const { data: transactions, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('account_id', accountId)
+    .order('transaction_date', { ascending: true })
+    .order('created_at', { ascending: true });
 
-    if (error) throw error;
+  if (error) throw error;
 
-    let runningBalance = 0;
-    
-    for (const txn of transactions || []) {
-      if (txn.transaction_type === 'credit') {
-        runningBalance += txn.amount;
-      } else {
-        runningBalance -= txn.amount;
-      }
-
-      await supabase
-        .from('transactions')
-        .update({ balance: runningBalance })
-        .eq('id', txn.id);
-    }
-
-    console.log(`Updating account ${accountId} to balance: ${runningBalance}`);
-    
-    const { data: updateData, error: updateError } = await supabase
-      .from('accounts')
-      .update({ balance: runningBalance })
-      .eq('id', accountId)
-      .eq('user_id', user.id);
-
-    if (updateError) {
-      console.error('Error updating account balance:', updateError);
-      throw updateError;
+  let runningBalance = 0;
+  const updates = [];
+  
+  // Calculate all balances first
+  for (const txn of transactions || []) {
+    if (txn.transaction_type === 'credit') {
+      runningBalance += txn.amount;
+    } else {
+      runningBalance -= txn.amount;
     }
     
-    console.log('Account balance updated successfully:', updateData);
+    updates.push({
+      id: txn.id,
+      balance: runningBalance
+    });
   }
+
+  // Batch update in chunks of 100
+  const chunkSize = 100;
+  for (let i = 0; i < updates.length; i += chunkSize) {
+    const chunk = updates.slice(i, i + chunkSize);
+    
+    // Update transactions in batch
+    const updatePromises = chunk.map(update =>
+      supabase
+        .from('transactions')
+        .update({ balance: update.balance })
+        .eq('id', update.id)
+    );
+    
+    await Promise.all(updatePromises);
+  }
+
+  console.log(`Updated ${updates.length} transactions, final balance: ${runningBalance}`);
+
+  // Update the account balance
+  const { error: updateError } = await supabase
+    .from('accounts')
+    .update({ balance: runningBalance })
+    .eq('id', accountId)
+    .eq('user_id', user.id);
+
+  if (updateError) {
+    console.error('Error updating account balance:', updateError);
+    throw updateError;
+  }
+  
+  console.log('Account balance updated successfully');
+}
 }
 
 export const transactionService = new TransactionService();
-
