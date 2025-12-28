@@ -37,19 +37,20 @@ useEffect(() => {
   };
 
   const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      const accountsData = await accountService.getAccounts();
-      setAccounts(accountsData);
-      
-      const total = accountsData.reduce((sum, acc) => sum + Number(acc.balance), 0);
-      setTotalBalance(total);
-    } catch (err) {
-      console.error('Error loading dashboard:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const accountsData = await accountService.getAccounts();
+    console.log('Loaded accounts:', accountsData); // ADD THIS
+    setAccounts(accountsData);
+    
+    const total = accountsData.reduce((sum, acc) => sum + Number(acc.balance), 0);
+    setTotalBalance(total);
+  } catch (err) {
+    console.error('Error loading dashboard:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleAccountClick = (account: Account) => {
     navigate('/transactions-list', {
