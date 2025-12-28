@@ -8,10 +8,20 @@ import './TransactionsList.css';
 const TransactionsList: React.FC = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [summary, setSummary] = useState({ 
+    total: 0, 
+    credits: 0, 
+    debits: 0,
+    count: 0 
+  });
 
   useEffect(() => {
     checkUser();
@@ -23,6 +33,10 @@ const TransactionsList: React.FC = () => {
       loadTransactions();
     }
   }, [selectedAccount]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [transactions, dateRange, startDate, endDate]);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -37,13 +51,11 @@ const TransactionsList: React.FC = () => {
       
       // Load accounts FIRST
       const accountsData = await accountService.getAccounts();
-      console.log('Loaded accounts:', accountsData);
       setAccounts(accountsData);
       
       // Then load transactions
       const accountId = selectedAccount === 'all' ? undefined : selectedAccount;
       const transactionsData = await transactionService.getTransactions(accountId);
-      console.log('Loaded transactions:', transactionsData);
       setTransactions(transactionsData);
       
     } catch (err: any) {
@@ -63,6 +75,82 @@ const TransactionsList: React.FC = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...transactions];
+
+    // Apply date range filter
+    if (dateRange !== 'all') {
+      const now = new Date();
+      let filterStartDate: Date | null = null;
+      let filterEndDate: Date | null = null;
+
+      switch (dateRange) {
+        case 'this_month':
+          filterStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          filterEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case 'last_month':
+          filterStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          filterEndDate = new Date(now.getFullYear(), now.getMonth(), 0);
+          break;
+        case 'last_3_months':
+          filterStartDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+          filterEndDate = now;
+          break;
+        case 'last_6_months':
+          filterStartDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+          filterEndDate = now;
+          break;
+        case 'this_year':
+          filterStartDate = new Date(now.getFullYear(), 0, 1);
+          filterEndDate = new Date(now.getFullYear(), 11, 31);
+          break;
+        case 'last_year':
+          filterStartDate = new Date(now.getFullYear() - 1, 0, 1);
+          filterEndDate = new Date(now.getFullYear() - 1, 11, 31);
+          break;
+        case 'custom':
+          if (startDate) filterStartDate = new Date(startDate);
+          if (endDate) filterEndDate = new Date(endDate);
+          break;
+      }
+
+      if (filterStartDate || filterEndDate) {
+        filtered = filtered.filter(txn => {
+          const txnDate = new Date(txn.transaction_date);
+          if (filterStartDate && txnDate < filterStartDate) return false;
+          if (filterEndDate && txnDate > filterEndDate) return false;
+          return true;
+        });
+      }
+    }
+
+    setFilteredTransactions(filtered);
+    calculateSummary(filtered);
+  };
+
+  const calculateSummary = (txns: Transaction[]) => {
+    const summary = {
+      total: txns.length,
+      count: txns.length,
+      credits: txns
+        .filter(t => t.transaction_type === 'credit')
+        .reduce((sum, t) => sum + t.amount, 0),
+      debits: txns
+        .filter(t => t.transaction_type === 'debit')
+        .reduce((sum, t) => sum + t.amount, 0)
+    };
+    setSummary(summary);
+  };
+
+  const handleDateRangeChange = (value: string) => {
+    setDateRange(value);
+    if (value !== 'custom') {
+      setStartDate('');
+      setEndDate('');
     }
   };
 
@@ -103,6 +191,21 @@ const TransactionsList: React.FC = () => {
     return account?.name || `Account (${accountId.substring(0, 8)}...)`;
   };
 
+  const getDateRangeLabel = () => {
+    switch (dateRange) {
+      case 'this_month': return 'This Month';
+      case 'last_month': return 'Last Month';
+      case 'last_3_months': return 'Last 3 Months';
+      case 'last_6_months': return 'Last 6 Months';
+      case 'this_year': return 'This Year';
+      case 'last_year': return 'Last Year';
+      case 'custom': return startDate && endDate 
+        ? `${formatDate(startDate)} - ${formatDate(endDate)}` 
+        : 'Custom Range';
+      default: return 'All Time';
+    }
+  };
+
   if (loading) {
     return <div className="transactions-list-container"><p>Loading transactions...</p></div>;
   }
@@ -129,6 +232,31 @@ const TransactionsList: React.FC = () => {
 
       {error && <div className="error-message">{error}</div>}
 
+      {/* Summary Cards */}
+      <div className="summary-section">
+        <div className="summary-card">
+          <h3>Transactions</h3>
+          <p className="stat-value">{summary.count}</p>
+          <span className="stat-label">{getDateRangeLabel()}</span>
+        </div>
+        <div className="summary-card credit">
+          <h3>Total Income</h3>
+          <p className="stat-value">{formatCurrency(summary.credits)}</p>
+          <span className="stat-label">{getDateRangeLabel()}</span>
+        </div>
+        <div className="summary-card debit">
+          <h3>Total Expenses</h3>
+          <p className="stat-value">{formatCurrency(summary.debits)}</p>
+          <span className="stat-label">{getDateRangeLabel()}</span>
+        </div>
+        <div className="summary-card net">
+          <h3>Net Balance</h3>
+          <p className="stat-value">{formatCurrency(summary.credits - summary.debits)}</p>
+          <span className="stat-label">{getDateRangeLabel()}</span>
+        </div>
+      </div>
+
+      {/* Filters Section */}
       <div className="filters-section">
         <div className="filter-group">
           <label>Filter by Account:</label>
@@ -141,15 +269,56 @@ const TransactionsList: React.FC = () => {
             ))}
           </select>
         </div>
+
+        <div className="filter-group">
+          <label>Filter by Date:</label>
+          <select value={dateRange} onChange={(e) => handleDateRangeChange(e.target.value)}>
+            <option value="all">All Time</option>
+            <option value="this_month">This Month</option>
+            <option value="last_month">Last Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="this_year">This Year (2025)</option>
+            <option value="last_year">Last Year (2024)</option>
+            <option value="custom">Custom Range</option>
+          </select>
+        </div>
+
+        {dateRange === 'custom' && (
+          <>
+            <div className="filter-group">
+              <label>From:</label>
+              <input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+              />
+            </div>
+            <div className="filter-group">
+              <label>To:</label>
+              <input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="transactions-content">
-        {transactions.length === 0 ? (
+        {filteredTransactions.length === 0 ? (
           <div className="empty-state">
-            <p>No transactions yet</p>
-            <button onClick={() => navigate('/transactions')} className="btn-primary">
-              Upload Transactions
-            </button>
+            <p>No transactions found for the selected filters</p>
+            {dateRange !== 'all' || selectedAccount !== 'all' ? (
+              <button onClick={() => { setDateRange('all'); setSelectedAccount('all'); }} className="btn-secondary">
+                Clear Filters
+              </button>
+            ) : (
+              <button onClick={() => navigate('/transactions')} className="btn-primary">
+                Upload Transactions
+              </button>
+            )}
           </div>
         ) : (
           <div className="table-wrapper">
@@ -166,7 +335,7 @@ const TransactionsList: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((transaction) => (
+                {filteredTransactions.map((transaction) => (
                   <tr key={transaction.id}>
                     <td>{formatDate(transaction.transaction_date)}</td>
                     <td>{getAccountName(transaction.account_id)}</td>
