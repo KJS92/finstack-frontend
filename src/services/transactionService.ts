@@ -53,7 +53,6 @@ class TransactionService {
     const newTransactions: any[] = [];
 
     for (const txn of transactions) {
-      // Check if transaction exists with same date, amount, and description
       const { data: existing } = await supabase
         .from('transactions')
         .select('id')
@@ -88,7 +87,6 @@ class TransactionService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Filter duplicates if needed
     let transactionsToImport = transactions;
     
     if (skipDuplicates) {
@@ -117,10 +115,8 @@ class TransactionService {
 
     if (insertError) throw insertError;
 
-    // Update account balance to closing balance
     await this.updateAccountBalance(accountId);
 
-    // Record file upload
     const fileType = fileName.split('.').pop()?.toLowerCase() || 'csv';
     
     const { error: fileError } = await supabase
@@ -135,12 +131,10 @@ class TransactionService {
 
     if (fileError) {
       console.error('File upload record error:', fileError);
-      // Don't throw - transactions are already imported
     }
   }
 
   async updateAccountBalance(accountId: string): Promise<void> {
-    // Get the most recent transaction for this account
     const { data: latestTransaction, error } = await supabase
       .from('transactions')
       .select('balance')
@@ -152,14 +146,12 @@ class TransactionService {
 
     if (error || !latestTransaction?.balance) return;
 
-    // Update account balance
     await supabase
       .from('accounts')
       .update({ balance: latestTransaction.balance })
       .eq('id', accountId);
   }
 
-  // NEW: Update transaction function
   async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
@@ -181,7 +173,6 @@ class TransactionService {
 
     if (error) throw error;
 
-    // Recalculate balances for the account after update
     if (transaction?.account_id) {
       await this.recalculateBalances(transaction.account_id);
     }
@@ -191,7 +182,6 @@ class TransactionService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Get transaction details before deleting
     const { data: transaction } = await supabase
       .from('transactions')
       .select('account_id')
@@ -206,17 +196,15 @@ class TransactionService {
 
     if (error) throw error;
 
-    // Recalculate balances after deletion
     if (transaction?.account_id) {
       await this.recalculateBalances(transaction.account_id);
     }
   }
 
-  // NEW: Recalculate balances function
-    async recalculateBalances(accountId: string): Promise<void> {
+  async recalculateBalances(accountId: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
-  
+
     const { data: transactions, error } = await supabase
       .from('transactions')
       .select('*')
@@ -224,9 +212,9 @@ class TransactionService {
       .eq('account_id', accountId)
       .order('transaction_date', { ascending: true })
       .order('created_at', { ascending: true });
-  
+
     if (error) throw error;
-  
+
     let runningBalance = 0;
     
     for (const txn of transactions || []) {
@@ -235,22 +223,21 @@ class TransactionService {
       } else {
         runningBalance -= txn.amount;
       }
-  
+
       await supabase
         .from('transactions')
         .update({ balance: runningBalance })
         .eq('id', txn.id);
     }
-  
-    // Update the account balance with error handling
+
     console.log(`Updating account ${accountId} to balance: ${runningBalance}`);
     
     const { data: updateData, error: updateError } = await supabase
       .from('accounts')
       .update({ balance: runningBalance })
       .eq('id', accountId)
-      .eq('user_id', user.id); // ADD user_id check for RLS
-  
+      .eq('user_id', user.id);
+
     if (updateError) {
       console.error('Error updating account balance:', updateError);
       throw updateError;
@@ -258,29 +245,7 @@ class TransactionService {
     
     console.log('Account balance updated successfully:', updateData);
   }
-
-  
-  // Update all transaction balances
-  for (const txn of transactions || []) {
-    if (txn.transaction_type === 'credit') {
-      runningBalance += txn.amount;
-    } else {
-      runningBalance -= txn.amount;
-    }
-
-    await supabase
-      .from('transactions')
-      .update({ balance: runningBalance })
-      .eq('id', txn.id);
-  }
-
-  // Update the account balance directly with the final running balance
-  await supabase
-    .from('accounts')
-    .update({ balance: runningBalance })
-    .eq('id', accountId);
 }
-}
-  // Update account balance to the latest transaction balance
-  
+
 export const transactionService = new TransactionService();
+
