@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { transactionService, Transaction } from '../services/transactionService';
 import { accountService, Account } from '../services/accountService';
+import EditTransactionModal from '../components/EditTransactionModal';
 import './TransactionsList.css';
 
 const TransactionsList: React.FC = () => {
@@ -18,6 +19,7 @@ const TransactionsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState({ 
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     
     total: 0, 
     credits: 0, 
@@ -140,6 +142,19 @@ const TransactionsList: React.FC = () => {
 
     setFilteredTransactions(filtered);
     calculateSummary(filtered);
+  };
+
+  const handleEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+  };
+  
+  const handleEditClose = () => {
+    setEditingTransaction(null);
+  };
+  
+  const handleEditSave = () => {
+    setEditingTransaction(null);
+    loadTransactions(); // Reload transactions after edit
   };
 
   const calculateSummary = (txns: Transaction[]) => {
@@ -315,6 +330,22 @@ const TransactionsList: React.FC = () => {
           </>
         )}
       </div>
+      <td>
+        <div className="action-buttons">
+          <button 
+            onClick={() => handleEdit(transaction)}
+            className="btn-edit-small"
+          >
+            Edit
+          </button>
+          <button 
+            onClick={() => handleDelete(transaction.id)}
+            className="btn-delete-small"
+          >
+            Delete
+          </button>
+        </div>
+      </td>
 
       <div className="transactions-content">
         {filteredTransactions.length === 0 ? (
@@ -376,8 +407,14 @@ const TransactionsList: React.FC = () => {
           </div>
         )}
       </div>
+      {/* Edit Modal */}
+      {editingTransaction && (
+        <EditTransactionModal
+          transaction={editingTransaction}
+          onClose={handleEditClose}
+          onSave={handleEditSave}
+        />
+      )}
     </div>
   );
 };
-
-export default TransactionsList;
