@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [userEmail, setUserEmail] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [totalBalance, setTotalBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-    checkUser();
-    loadDashboardData();
-  }, []);
+useEffect(() => {
+  checkUser();
+  loadDashboardData();
+}, [location]); // This triggers whenever location changes
 
   // Reload accounts when page gets focus (coming back from transactions)
   useEffect(() => {
