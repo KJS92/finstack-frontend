@@ -11,10 +11,8 @@ import TransactionsList from './pages/TransactionsList';
 import PasswordReset from './pages/PasswordReset';
 import UpdatePassword from './pages/UpdatePassword';
 import AuthHandler from './components/AuthHandler';
-import './App.css';
 import AddTransaction from './pages/AddTransaction';
-// Inside <Routes>
-<Route path="/add-transaction" element={<AddTransaction />} />
+import './App.css';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -59,6 +57,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/transactions" element={<Transactions />} />
+          <Route path="/add-transaction" element={<AddTransaction />} />
           <Route path="/transaction-preview" element={<TransactionPreview />} />
           <Route path="/transactions-list" element={<TransactionsList />} />
           <Route path="/profile" element={<Profile />} />
