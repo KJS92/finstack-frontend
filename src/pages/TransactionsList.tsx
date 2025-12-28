@@ -9,6 +9,7 @@ import './TransactionsList.css';
 const TransactionsList: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -19,7 +20,6 @@ const TransactionsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState({ 
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     
     total: 0, 
     credits: 0, 
