@@ -32,25 +32,32 @@ const TransactionsList: React.FC = () => {
   }, []);
 
   // Handle account filter from Dashboard navigation
-  useEffect(() => {
-    const state = location.state as any;
-    if (state?.accountId && accounts.length > 0) {
-      console.log('Setting account filter to:', state.accountId);
-      setSelectedAccount(state.accountId);
-    }
-  }, [location.state, accounts]);
+ useEffect(() => {
+  checkUser();
+  loadData();
+}, []);
 
-  // Load transactions when account filter changes
-  useEffect(() => {
-    if (accounts.length > 0) {
-      loadTransactions();
-    }
-  }, [selectedAccount, accounts]);
+// Handle account filter from Dashboard navigation - SET ONLY, don't load yet
+useEffect(() => {
+  const state = location.state as any;
+  if (state?.accountId && accounts.length > 0) {
+    console.log('Setting account filter to:', state.accountId);
+    setSelectedAccount(state.accountId);
+  }
+}, [location.state, accounts]);
 
-  // Apply date filters
-  useEffect(() => {
-    applyFilters();
-  }, [transactions, dateRange, startDate, endDate]);
+// Load transactions when account filter changes OR when accounts load
+useEffect(() => {
+  if (accounts.length > 0) {
+    console.log('Loading transactions for account:', selectedAccount);
+    loadTransactions();
+  }
+}, [selectedAccount, accounts]);
+
+// Apply date filters
+useEffect(() => {
+  applyFilters();
+}, [transactions, dateRange, startDate, endDate]);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
