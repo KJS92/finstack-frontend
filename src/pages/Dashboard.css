@@ -239,3 +239,35 @@
     gap: 10px;
   }
 }
+
+/* Add to existing Dashboard.css */
+
+.account-item.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.account-item.clickable:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: #f8f9ff;
+}
+
+.account-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.view-link {
+  color: #5b7fff;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.account-item.clickable:hover .view-link {
+  opacity: 1;
+}
