@@ -88,8 +88,9 @@ const TransactionPreview: React.FC = () => {
     }
 
     // If all transactions are duplicates and mode is skip
+    // If all transactions are duplicates and mode is skip
     if (importMode === 'skip' && duplicateInfo?.newCount === 0) {
-      setError('All transactions are duplicates. Nothing to import.');
+      alert('All transactions already exist in your account. Select "Import all anyway" if you want to re-import them.');
       return;
     }
 
