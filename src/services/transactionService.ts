@@ -213,21 +213,52 @@ class TransactionService {
   }
 
   // NEW: Recalculate balances function
-  async recalculateBalances(accountId: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+    async recalculateBalances(accountId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+  
+    const { data: transactions, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('account_id', accountId)
+      .order('transaction_date', { ascending: true })
+      .order('created_at', { ascending: true });
+  
+    if (error) throw error;
+  
+    let runningBalance = 0;
+    
+    for (const txn of transactions || []) {
+      if (txn.transaction_type === 'credit') {
+        runningBalance += txn.amount;
+      } else {
+        runningBalance -= txn.amount;
+      }
+  
+      await supabase
+        .from('transactions')
+        .update({ balance: runningBalance })
+        .eq('id', txn.id);
+    }
+  
+    // Update the account balance with error handling
+    console.log(`Updating account ${accountId} to balance: ${runningBalance}`);
+    
+    const { data: updateData, error: updateError } = await supabase
+      .from('accounts')
+      .update({ balance: runningBalance })
+      .eq('id', accountId)
+      .eq('user_id', user.id); // ADD user_id check for RLS
+  
+    if (updateError) {
+      console.error('Error updating account balance:', updateError);
+      throw updateError;
+    }
+    
+    console.log('Account balance updated successfully:', updateData);
+  }
 
-  const { data: transactions, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('account_id', accountId)
-    .order('transaction_date', { ascending: true })
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-
-  let runningBalance = 0;
   
   // Update all transaction balances
   for (const txn of transactions || []) {
