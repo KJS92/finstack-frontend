@@ -416,5 +416,5 @@ useEffect(() => {
     </div>
   );
 };
-
+}
 export default TransactionsList;
