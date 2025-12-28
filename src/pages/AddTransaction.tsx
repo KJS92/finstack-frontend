@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
-import { transactionService } from '../services/transactionService';
 import './AddTransaction.css';
 
 const AddTransaction: React.FC = () => {
@@ -19,13 +18,24 @@ const AddTransaction: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    checkUser();
     loadAccounts();
   }, []);
+
+  const checkUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/auth');
+    }
+  };
 
   const loadAccounts = async () => {
     try {
       const data = await accountService.getAccounts();
       setAccounts(data);
+      if (data.length > 0) {
+        setFormData(prev => ({ ...prev, accountId: data[0].id }));
+      }
     } catch (err: any) {
       setError(err.message);
     }
@@ -35,7 +45,7 @@ const AddTransaction: React.FC = () => {
     e.preventDefault();
     
     if (!formData.accountId || !formData.description || !formData.amount) {
-      setError('Please fill all fields');
+      setError('Please fill all required fields');
       return;
     }
 
@@ -60,7 +70,7 @@ const AddTransaction: React.FC = () => {
         newBalance += amount;
       }
 
-      // Insert transaction with calculated balance
+      // Insert transaction
       const { error: insertError } = await supabase
         .from('transactions')
         .insert({
@@ -84,7 +94,7 @@ const AddTransaction: React.FC = () => {
 
       if (updateError) throw updateError;
 
-      // Redirect to transactions list
+      alert('Transaction added successfully!');
       navigate('/transactions-list');
 
     } catch (err: any) {
@@ -94,92 +104,104 @@ const AddTransaction: React.FC = () => {
     }
   };
 
+  const handleCancel = () => {
+    navigate('/dashboard');
+  };
+
   return (
     <div className="add-transaction-container">
       <header className="add-transaction-header">
         <h1>Add Transaction</h1>
-        <button onClick={() => navigate('/dashboard')} className="btn-secondary">
+        <button onClick={handleCancel} className="btn-secondary">
           Back to Dashboard
         </button>
       </header>
 
       {error && <div className="error-message">{error}</div>}
 
-      <form onSubmit={handleSubmit} className="transaction-form">
-        <div className="form-group">
-          <label>Account *</label>
-          <select
-            value={formData.accountId}
-            onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
-            required
-          >
-            <option value="">Select Account</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} ({account.type})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Date *</label>
-          <input
-            type="date"
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Description *</label>
-          <input
-            type="text"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="e.g., Grocery shopping, Salary credit"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Type *</label>
-          <select
-            value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value as 'debit' | 'credit' })}
-            required
-          >
-            <option value="debit">Debit (Money Out)</option>
-            <option value="credit">Credit (Money In)</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Amount *</label>
-          <input
-            type="number"
-            step="0.01"
-            value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-            placeholder="0.00"
-            required
-          />
-        </div>
-
-        <div className="form-actions">
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Adding...' : 'Add Transaction'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/transactions-list')}
-            className="btn-secondary"
-          >
-            Cancel
+      {accounts.length === 0 ? (
+        <div className="empty-state">
+          <p>You need to create an account first</p>
+          <button onClick={() => navigate('/accounts')} className="btn-primary">
+            Create Account
           </button>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={handleSubmit} className="transaction-form">
+          <div className="form-group">
+            <label>Account *</label>
+            <select
+              value={formData.accountId}
+              onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
+              required
+            >
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} ({account.type})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Date *</label>
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Description *</label>
+            <input
+              type="text"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="e.g., Grocery shopping, Salary credit"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Type *</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'debit' | 'credit' })}
+              required
+            >
+              <option value="debit">Debit (Money Out / Expense)</option>
+              <option value="credit">Credit (Money In / Income)</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Amount *</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              placeholder="0.00"
+              required
+            />
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Adding...' : 'Add Transaction'}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 };
