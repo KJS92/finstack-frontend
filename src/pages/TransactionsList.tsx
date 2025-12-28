@@ -66,7 +66,7 @@ useEffect(() => {
     }
   };
 
-  const loadData = async () => {
+    const loadData = async () => {
     try {
       setLoading(true);
       
@@ -74,9 +74,8 @@ useEffect(() => {
       const accountsData = await accountService.getAccounts();
       setAccounts(accountsData);
       
-      // Then load all transactions initially
-      const transactionsData = await transactionService.getTransactions();
-      setTransactions(transactionsData);
+      // DON'T load transactions here - let the useEffect handle it
+      // This prevents race condition
       
     } catch (err: any) {
       setError(err.message);
