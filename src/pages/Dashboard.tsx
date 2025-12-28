@@ -11,20 +11,20 @@ const Dashboard: React.FC = () => {
   const [totalBalance, setTotalBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
+    useEffect(() => {
+    checkUser();
+    loadDashboardData();
+  }, []);
+
+  // Reload accounts when page gets focus (coming back from transactions)
   useEffect(() => {
-  checkUser();
-  loadAccounts();
-}, []);
+    const handleFocus = () => {
+      loadDashboardData();
+    };
 
-// Add this NEW useEffect to reload when coming back to dashboard
-useEffect(() => {
-  const handleFocus = () => {
-    loadAccounts(); // Reload accounts when page gets focus
-  };
-
-  window.addEventListener('focus', handleFocus);
-  return () => window.removeEventListener('focus', handleFocus);
-}, []);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
