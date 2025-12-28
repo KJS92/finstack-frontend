@@ -159,6 +159,34 @@ class TransactionService {
       .eq('id', accountId);
   }
 
+  // NEW: Update transaction function
+  async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data: transaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select('account_id')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const { error } = await supabase
+      .from('transactions')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+
+    // Recalculate balances for the account after update
+    if (transaction?.account_id) {
+      await this.recalculateBalances(transaction.account_id);
+    }
+  }
+
   async deleteTransaction(id: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
@@ -178,10 +206,43 @@ class TransactionService {
 
     if (error) throw error;
 
-    // Update account balance after deletion
+    // Recalculate balances after deletion
     if (transaction?.account_id) {
-      await this.updateAccountBalance(transaction.account_id);
+      await this.recalculateBalances(transaction.account_id);
     }
+  }
+
+  // NEW: Recalculate balances function
+  async recalculateBalances(accountId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data: transactions, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('account_id', accountId)
+      .order('transaction_date', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    let runningBalance = 0;
+    for (const txn of transactions || []) {
+      if (txn.transaction_type === 'credit') {
+        runningBalance += txn.amount;
+      } else {
+        runningBalance -= txn.amount;
+      }
+
+      await supabase
+        .from('transactions')
+        .update({ balance: runningBalance })
+        .eq('id', txn.id);
+    }
+
+    // Update account balance to the latest transaction balance
+    await this.updateAccountBalance(accountId);
   }
 }
 
