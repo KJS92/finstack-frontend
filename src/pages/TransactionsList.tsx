@@ -34,6 +34,14 @@ const TransactionsList: React.FC = () => {
     }
   }, [selectedAccount]);
 
+  // Check if navigated from dashboard with specific account
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.accountId) {
+      setSelectedAccount(state.accountId);
+    }
+  }, [location.state]);
+
   useEffect(() => {
     applyFilters();
   }, [transactions, dateRange, startDate, endDate]);
