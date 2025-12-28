@@ -33,11 +33,16 @@ const TransactionsList: React.FC = () => {
 
   // Handle account filter from Dashboard navigation
   useEffect(() => {
-    const state = location.state as any;
-    if (state?.accountId && accounts.length > 0) {
-      setSelectedAccount(state.accountId);
-    }
-  }, [location.state, accounts]);
+   // Handle account filter from Dashboard navigation
+useEffect(() => {
+  const state = location.state as any;
+  if (state?.accountId && accounts.length > 0) {
+    console.log('Setting account filter to:', state.accountId);
+    setSelectedAccount(state.accountId);
+    // Clear location state after using it
+    window.history.replaceState({}, document.title);
+  }
+}, [location.state, accounts]);
 
   // Load transactions when account filter changes
   useEffect(() => {
