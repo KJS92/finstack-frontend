@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { transactionService, Transaction } from '../services/transactionService';
 import { accountService, Account } from '../services/accountService';
-import { useNavigate, useLocation } from 'react-router-dom';
 import './TransactionsList.css';
 
 const TransactionsList: React.FC = () => {
