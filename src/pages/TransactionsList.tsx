@@ -31,20 +31,22 @@ const TransactionsList: React.FC = () => {
     loadData();
   }, []);
 
+  // Handle account filter from Dashboard navigation
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.accountId && accounts.length > 0) {
+      setSelectedAccount(state.accountId);
+    }
+  }, [location.state, accounts]);
+
+  // Load transactions when account filter changes
   useEffect(() => {
     if (accounts.length > 0) {
       loadTransactions();
     }
-  }, [selectedAccount]);
+  }, [selectedAccount, accounts]);
 
-  // Check if navigated from dashboard with specific account
-  useEffect(() => {
-    const state = location.state as any;
-    if (state?.accountId) {
-      setSelectedAccount(state.accountId);
-    }
-  }, [location.state]);
-
+  // Apply date filters
   useEffect(() => {
     applyFilters();
   }, [transactions, dateRange, startDate, endDate]);
@@ -64,9 +66,8 @@ const TransactionsList: React.FC = () => {
       const accountsData = await accountService.getAccounts();
       setAccounts(accountsData);
       
-      // Then load transactions
-      const accountId = selectedAccount === 'all' ? undefined : selectedAccount;
-      const transactionsData = await transactionService.getTransactions(accountId);
+      // Then load all transactions initially
+      const transactionsData = await transactionService.getTransactions();
       setTransactions(transactionsData);
       
     } catch (err: any) {
@@ -151,9 +152,9 @@ const TransactionsList: React.FC = () => {
     setEditingTransaction(null);
   };
   
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     setEditingTransaction(null);
-    loadTransactions(); // Reload transactions after edit
+    await loadTransactions(); // Make it async and await
   };
 
   const calculateSummary = (txns: Transaction[]) => {
@@ -183,7 +184,7 @@ const TransactionsList: React.FC = () => {
 
     try {
       await transactionService.deleteTransaction(id);
-      loadTransactions();
+      await loadTransactions();
     } catch (err: any) {
       setError(err.message);
     }
@@ -412,4 +413,3 @@ const TransactionsList: React.FC = () => {
 };
 
 export default TransactionsList;
-
