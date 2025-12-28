@@ -3,17 +3,19 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { transactionParser, ParsedTransaction } from '../services/transactionParser';
 import { transactionService } from '../services/transactionService';
-import { fileUploadService } from '../services/fileUploadService';
 import './TransactionPreview.css';
 
 const TransactionPreview: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
+  const [duplicateInfo, setDuplicateInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState({ total: 0, credits: 0, debits: 0 });
+  const [importMode, setImportMode] = useState<'skip' | 'all'>('skip');
 
   // Get file content and account from navigation state
   const { file, accountId, accountName, fileName } = location.state || {};
@@ -40,7 +42,7 @@ const TransactionPreview: React.FC = () => {
       setLoading(true);
       setError('');
 
-      // Parse the file content (file is now a string)
+      // Parse the file content
       const parsedTransactions = transactionParser.parseCSV(file);
       setTransactions(parsedTransactions);
 
@@ -56,10 +58,26 @@ const TransactionPreview: React.FC = () => {
       };
       setSummary(summary);
 
+      // Check for duplicates
+      await checkForDuplicates(parsedTransactions);
+
     } catch (err: any) {
       setError(err.message || 'Failed to parse file');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkForDuplicates = async (txns: ParsedTransaction[]) => {
+    try {
+      setChecking(true);
+      const result = await transactionService.checkDuplicates(txns, accountId);
+      setDuplicateInfo(result);
+    } catch (err: any) {
+      console.error('Duplicate check failed:', err);
+      // Don't block import if duplicate check fails
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -69,18 +87,30 @@ const TransactionPreview: React.FC = () => {
       return;
     }
 
+    // If all transactions are duplicates and mode is skip
+    if (importMode === 'skip' && duplicateInfo?.newCount === 0) {
+      setError('All transactions are duplicates. Nothing to import.');
+      return;
+    }
+
     try {
       setImporting(true);
       setError('');
     
-      // Import transactions to database
+      // Import transactions
+      const skipDuplicates = importMode === 'skip';
       await transactionService.importTransactions(
         transactions,
         accountId,
-        fileName
+        fileName,
+        skipDuplicates
       );
 
-      alert(`Successfully imported ${transactions.length} transactions!`);
+      const importedCount = skipDuplicates 
+        ? duplicateInfo?.newCount || transactions.length 
+        : transactions.length;
+
+      alert(`Successfully imported ${importedCount} transaction(s)!`);
       navigate('/transactions-list');
     } catch (err: any) {
       setError(err.message || 'Failed to import transactions');
@@ -135,14 +165,51 @@ const TransactionPreview: React.FC = () => {
           <button 
             onClick={handleImport} 
             className="btn-primary"
-            disabled={importing || transactions.length === 0}
+            disabled={importing || transactions.length === 0 || checking}
           >
-            {importing ? 'Importing...' : `Import ${transactions.length} Transactions`}
+            {importing ? 'Importing...' : `Import ${importMode === 'skip' ? (duplicateInfo?.newCount || transactions.length) : transactions.length} Transaction(s)`}
           </button>
         </div>
       </header>
 
       {error && <div className="error-message">{error}</div>}
+
+      {/* Duplicate Warning */}
+      {duplicateInfo && duplicateInfo.duplicateCount > 0 && (
+        <div className="duplicate-warning">
+          <div className="warning-icon">⚠️</div>
+          <div className="warning-content">
+            <h3>Duplicate Transactions Detected</h3>
+            <p>
+              Found <strong>{duplicateInfo.duplicateCount}</strong> transaction(s) that already exist in your account.
+              <br />
+              <strong>{duplicateInfo.newCount}</strong> new transaction(s) will be imported.
+            </p>
+            <div className="import-mode-selector">
+              <label>
+                <input
+                  type="radio"
+                  name="importMode"
+                  value="skip"
+                  checked={importMode === 'skip'}
+                  onChange={() => setImportMode('skip')}
+                />
+                Skip duplicates (recommended)
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="importMode"
+                  value="all"
+                  checked={importMode === 'all'}
+                  onChange={() => setImportMode('all')}
+                />
+                Import all anyway
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="preview-content">
         <div className="summary-cards">
@@ -164,6 +231,12 @@ const TransactionPreview: React.FC = () => {
               {formatCurrency(summary.credits - summary.debits)}
             </p>
           </div>
+          {duplicateInfo && duplicateInfo.duplicateCount > 0 && (
+            <div className="summary-card warning">
+              <h3>New Transactions</h3>
+              <p className="stat-value">{duplicateInfo.newCount}</p>
+            </div>
+          )}
         </div>
 
         <div className="transactions-table-container">
@@ -178,27 +251,43 @@ const TransactionPreview: React.FC = () => {
                   <th>Type</th>
                   <th>Amount</th>
                   <th>Balance</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((transaction, index) => (
-                  <tr key={index}>
-                    <td>{index + 1}</td>
-                    <td>{formatDate(transaction.transaction_date)}</td>
-                    <td className="description">{transaction.description}</td>
-                    <td>
-                      <span className={`type-badge ${transaction.transaction_type}`}>
-                        {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
-                      </span>
-                    </td>
-                    <td className={`amount ${transaction.transaction_type}`}>
-                      {formatCurrency(transaction.amount)}
-                    </td>
-                    <td>
-                      {transaction.balance ? formatCurrency(transaction.balance) : '-'}
-                    </td>
-                  </tr>
-                ))}
+                {transactions.map((transaction, index) => {
+                  const isDuplicate = duplicateInfo?.duplicates.some((dup: any) => 
+                    dup.transaction_date === transaction.transaction_date &&
+                    dup.amount === transaction.amount &&
+                    dup.description === transaction.description
+                  );
+                  
+                  return (
+                    <tr key={index} className={isDuplicate ? 'duplicate-row' : ''}>
+                      <td>{index + 1}</td>
+                      <td>{formatDate(transaction.transaction_date)}</td>
+                      <td className="description">{transaction.description}</td>
+                      <td>
+                        <span className={`type-badge ${transaction.transaction_type}`}>
+                          {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
+                        </span>
+                      </td>
+                      <td className={`amount ${transaction.transaction_type}`}>
+                        {formatCurrency(transaction.amount)}
+                      </td>
+                      <td>
+                        {transaction.balance ? formatCurrency(transaction.balance) : '-'}
+                      </td>
+                      <td>
+                        {isDuplicate ? (
+                          <span className="duplicate-badge">Duplicate</span>
+                        ) : (
+                          <span className="new-badge">New</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -211,9 +300,14 @@ const TransactionPreview: React.FC = () => {
           <button 
             onClick={handleImport} 
             className="btn-primary btn-large"
-            disabled={importing || transactions.length === 0}
+            disabled={importing || transactions.length === 0 || checking}
           >
-            {importing ? 'Importing...' : `Confirm & Import ${transactions.length} Transactions`}
+            {importing 
+              ? 'Importing...' 
+              : checking 
+              ? 'Checking duplicates...'
+              : `Confirm & Import ${importMode === 'skip' ? (duplicateInfo?.newCount || transactions.length) : transactions.length} Transaction(s)`
+            }
           </button>
         </div>
       </div>
