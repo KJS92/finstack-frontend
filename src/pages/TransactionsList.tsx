@@ -86,17 +86,20 @@ useEffect(() => {
   };
 
   const loadTransactions = async () => {
-    try {
-      setLoading(true);
-      const accountId = selectedAccount === 'all' ? undefined : selectedAccount;
-      const data = await transactionService.getTransactions(accountId);
-      setTransactions(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const accountId = selectedAccount === 'all' ? undefined : selectedAccount;
+    console.log('loadTransactions called with selectedAccount:', selectedAccount);
+    console.log('Fetching transactions for accountId:', accountId);
+    const data = await transactionService.getTransactions(accountId);
+    console.log('Loaded transactions count:', data.length);
+    setTransactions(data);
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const applyFilters = () => {
     let filtered = [...transactions];
