@@ -249,10 +249,7 @@ class TransactionService {
     .update({ balance: runningBalance })
     .eq('id', accountId);
 }
-
-    // Update account balance to the latest transaction balance
-    await this.updateAccountBalance(accountId);
-  }
 }
-
+  // Update account balance to the latest transaction balance
+  
 export const transactionService = new TransactionService();
