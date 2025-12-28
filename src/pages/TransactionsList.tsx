@@ -20,7 +20,6 @@ const TransactionsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState({ 
-    
     total: 0, 
     credits: 0, 
     debits: 0,
@@ -330,22 +329,6 @@ const TransactionsList: React.FC = () => {
           </>
         )}
       </div>
-      <td>
-        <div className="action-buttons">
-          <button 
-            onClick={() => handleEdit(transaction)}
-            className="btn-edit-small"
-          >
-            Edit
-          </button>
-          <button 
-            onClick={() => handleDelete(transaction.id)}
-            className="btn-delete-small"
-          >
-            Delete
-          </button>
-        </div>
-      </td>
 
       <div className="transactions-content">
         {filteredTransactions.length === 0 ? (
@@ -393,12 +376,20 @@ const TransactionsList: React.FC = () => {
                       {transaction.balance ? formatCurrency(transaction.balance) : '-'}
                     </td>
                     <td>
-                      <button 
-                        onClick={() => handleDelete(transaction.id)}
-                        className="btn-delete-small"
-                      >
-                        Delete
-                      </button>
+                      <div className="action-buttons">
+                        <button 
+                          onClick={() => handleEdit(transaction)}
+                          className="btn-edit-small"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(transaction.id)}
+                          className="btn-delete-small"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -407,6 +398,7 @@ const TransactionsList: React.FC = () => {
           </div>
         )}
       </div>
+      
       {/* Edit Modal */}
       {editingTransaction && (
         <EditTransactionModal
@@ -420,3 +412,4 @@ const TransactionsList: React.FC = () => {
 };
 
 export default TransactionsList;
+
