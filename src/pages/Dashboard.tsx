@@ -81,6 +81,9 @@ const Dashboard: React.FC = () => {
           <p className="user-email">{userEmail}</p>
         </div>
         <div className="header-actions">
+          <button onClick={() => navigate('/add-transaction')} className="btn-primary">
+            Add Transaction
+          </button>
           <button onClick={() => navigate('/transactions')} className="btn-primary">
             Upload Transactions
           </button>
@@ -92,9 +95,6 @@ const Dashboard: React.FC = () => {
           </button>
           <button onClick={handleLogout} className="btn-logout">
             Logout
-          </button>
-          <button onClick={() => navigate('/add-transaction')} className="btn-primary">
-            Add Transaction
           </button>
         </div>
       </header>
