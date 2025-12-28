@@ -14,6 +14,13 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface DuplicateCheckResult {
+  duplicates: any[];
+  newTransactions: any[];
+  duplicateCount: number;
+  newCount: number;
+}
+
 class TransactionService {
   async getTransactions(accountId?: string): Promise<Transaction[]> {
     const { data: { user } } = await supabase.auth.getUser();
@@ -35,15 +42,65 @@ class TransactionService {
     return data || [];
   }
 
+  async checkDuplicates(
+    transactions: any[],
+    accountId: string
+  ): Promise<DuplicateCheckResult> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const duplicates: any[] = [];
+    const newTransactions: any[] = [];
+
+    for (const txn of transactions) {
+      // Check if transaction exists with same date, amount, and description
+      const { data: existing } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('account_id', accountId)
+        .eq('transaction_date', txn.transaction_date)
+        .eq('amount', txn.amount)
+        .eq('description', txn.description)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        duplicates.push(txn);
+      } else {
+        newTransactions.push(txn);
+      }
+    }
+
+    return {
+      duplicates,
+      newTransactions,
+      duplicateCount: duplicates.length,
+      newCount: newTransactions.length
+    };
+  }
+
   async importTransactions(
     transactions: any[],
     accountId: string,
-    fileName: string
+    fileName: string,
+    skipDuplicates: boolean = true
   ): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const transactionsToInsert = transactions.map(t => ({
+    // Filter duplicates if needed
+    let transactionsToImport = transactions;
+    
+    if (skipDuplicates) {
+      const duplicateCheck = await this.checkDuplicates(transactions, accountId);
+      transactionsToImport = duplicateCheck.newTransactions;
+    }
+
+    if (transactionsToImport.length === 0) {
+      throw new Error('No new transactions to import (all are duplicates)');
+    }
+
+    const transactionsToInsert = transactionsToImport.map(t => ({
       user_id: user.id,
       account_id: accountId,
       transaction_date: t.transaction_date,
@@ -63,7 +120,23 @@ class TransactionService {
     // Update account balance to closing balance
     await this.updateAccountBalance(accountId);
 
-    if (fileError) throw fileError;
+    // Record file upload
+    const fileType = fileName.split('.').pop()?.toLowerCase() || 'csv';
+    
+    const { error: fileError } = await supabase
+      .from('file_uploads')
+      .insert({
+        user_id: user.id,
+        account_id: accountId,
+        file_name: fileName,
+        file_type: fileType,
+        status: 'completed'
+      });
+
+    if (fileError) {
+      console.error('File upload record error:', fileError);
+      // Don't throw - transactions are already imported
+    }
   }
 
   async updateAccountBalance(accountId: string): Promise<void> {
