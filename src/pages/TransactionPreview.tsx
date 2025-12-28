@@ -303,17 +303,19 @@ const TransactionPreview: React.FC = () => {
             Cancel Import
           </button>
           <button 
-            onClick={handleImport} 
-            className="btn-primary btn-large"
-            disabled={importing || transactions.length === 0 || checking}
-          >
-            {importing 
-              ? 'Importing...' 
-              : checking 
-              ? 'Checking duplicates...'
-              : `Confirm & Import ${importMode === 'skip' ? (duplicateInfo?.newCount || transactions.length) : transactions.length} Transaction(s)`
-            }
-          </button>
+          onClick={handleImport} 
+          className="btn-primary btn-large"
+          disabled={importing || transactions.length === 0 || checking || (importMode === 'skip' && duplicateInfo?.newCount === 0)}
+        >
+          {importing 
+            ? 'Importing...' 
+            : checking 
+            ? 'Checking duplicates...'
+            : importMode === 'skip' && duplicateInfo?.newCount === 0
+            ? 'No New Transactions to Import'
+            : `Confirm & Import ${importMode === 'skip' ? duplicateInfo?.newCount : transactions.length} Transaction(s)`
+          }
+        </button>
         </div>
       </div>
     </div>
