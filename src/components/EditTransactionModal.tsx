@@ -24,57 +24,36 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  try {
+    setLoading(true);
+    setError('');
+
+    const amount = parseFloat(formData.amount);
+
+    console.log('About to update transaction via service');
     
-    try {
-      setLoading(true);
-      setError('');
+    // Use the service instead of direct Supabase calls
+    const { transactionService } = await import('../services/transactionService');
+    
+    await transactionService.updateTransaction(transaction.id, {
+      transaction_date: formData.date,
+      description: formData.description,
+      transaction_type: formData.type as 'debit' | 'credit',
+      amount: amount
+    });
 
-      const amount = parseFloat(formData.amount);
-
-      // Update transaction
-      const { error: updateError } = await supabase
-        .from('transactions')
-        .update({
-          transaction_date: formData.date,
-          description: formData.description,
-          transaction_type: formData.type,
-          amount: amount
-        })
-        .eq('id', transaction.id);
-
-      if (updateError) throw updateError;
-
-      // Recalculate balance for the account
-      // Get all transactions for this account ordered by date
-      const { data: accountTransactions, error: fetchError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('account_id', transaction.account_id)
-        .order('transaction_date', { ascending: true })
-        .order('created_at', { ascending: true });
-
-      if (fetchError) throw fetchError;
-
-      // Update account balance to latest transaction's calculated balance
-      if (accountTransactions && accountTransactions.length > 0) {
-        const latestTransaction = accountTransactions[accountTransactions.length - 1];
-        
-        if (latestTransaction.balance) {
-          await supabase
-            .from('accounts')
-            .update({ balance: latestTransaction.balance })
-            .eq('id', transaction.account_id);
-        }
-      }
-
-      onSave();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log('Transaction updated successfully');
+    
+    onSave();
+  } catch (err: any) {
+    console.error('Error updating transaction:', err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="modal-overlay" onClick={onClose}>
