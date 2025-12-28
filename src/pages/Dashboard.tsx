@@ -17,14 +17,13 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const checkUser = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    navigate('/auth');
-  } else {
-    setUserEmail(session.user.email || '');
-  }
-};
-
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/auth');
+    } else {
+      setUserEmail(session.user.email || '');
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -39,6 +38,12 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAccountClick = (account: Account) => {
+    navigate('/transactions-list', {
+      state: { accountId: account.id, accountName: account.name }
+    });
   };
 
   const handleLogout = async () => {
@@ -76,22 +81,22 @@ const Dashboard: React.FC = () => {
           <p className="user-email">{userEmail}</p>
         </div>
         <div className="header-actions">
-        <button onClick={() => navigate('/transactions')} className="btn-primary">
-          Upload Transactions
-        </button>
-        <button onClick={() => navigate('/profile')} className="btn-secondary">
-          Profile
-        </button>
-        <button onClick={() => navigate('/accounts')} className="btn-secondary">
-          Manage Accounts
-        </button>
-        <button onClick={handleLogout} className="btn-logout">
-          Logout
-        </button>
+          <button onClick={() => navigate('/transactions')} className="btn-primary">
+            Upload Transactions
+          </button>
+          <button onClick={() => navigate('/profile')} className="btn-secondary">
+            Profile
+          </button>
+          <button onClick={() => navigate('/accounts')} className="btn-secondary">
+            Manage Accounts
+          </button>
+          <button onClick={handleLogout} className="btn-logout">
+            Logout
+          </button>
           <button onClick={() => navigate('/add-transaction')} className="btn-primary">
-        Add Transaction
-      </button>
-      </div>
+            Add Transaction
+          </button>
+        </div>
       </header>
 
       <div className="dashboard-summary">
@@ -123,7 +128,13 @@ const Dashboard: React.FC = () => {
         ) : (
           <div className="accounts-list">
             {accounts.slice(0, 4).map(account => (
-              <div key={account.id} className="account-item" style={{ borderLeftColor: account.color }}>
+              <div 
+                key={account.id} 
+                className="account-item clickable" 
+                style={{ borderLeftColor: account.color }}
+                onClick={() => handleAccountClick(account)}
+                title="Click to view transactions"
+              >
                 <div className="account-info">
                   <span className="account-icon">{getAccountIcon(account.type)}</span>
                   <div>
@@ -131,7 +142,10 @@ const Dashboard: React.FC = () => {
                     <p className="account-type">{account.type.replace('_', ' ')}</p>
                   </div>
                 </div>
-                <p className="account-balance">{formatCurrency(account.balance)}</p>
+                <div className="account-right">
+                  <p className="account-balance">{formatCurrency(account.balance)}</p>
+                  <span className="view-link">View Transactions →</span>
+                </div>
               </div>
             ))}
           </div>
