@@ -141,7 +141,7 @@ class CategoryService {
     const { data: transactions, error } = await query;
     if (error) throw error;
 
-    const { data: categories } = await this.getCategories();
+    const categories = await this.getCategories();
 
     // Calculate stats per category
     const statsMap = new Map();
