@@ -325,6 +325,3 @@ class TransactionService {
 } // ← End of TransactionService class
 
 export const transactionService = new TransactionService();
-
-}
-export const transactionService = new TransactionService();
