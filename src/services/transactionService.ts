@@ -301,6 +301,30 @@ class TransactionService {
   
   console.log(`✅ Account balance updated successfully to ₹${runningBalance}`);
 }
-}
+  class TransactionService {
+  // ... existing methods like getTransactions, createTransaction, etc.
 
+  async deleteTransaction(id: string): Promise<void> {
+    // ... existing delete method
+  }
+
+  // ADD THIS NEW METHOD HERE ⬇️
+  async updateTransactionCategory(transactionId: string, categoryId: string | null): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('transactions')
+      .update({ category_id: categoryId })
+      .eq('id', transactionId)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+  }
+
+} // ← End of TransactionService class
+
+export const transactionService = new TransactionService();
+
+}
 export const transactionService = new TransactionService();
