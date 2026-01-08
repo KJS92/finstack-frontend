@@ -34,9 +34,9 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
     console.log('About to update transaction via service');
     
+    // Use the service instead of direct Supabase calls
     const { transactionService } = await import('../services/transactionService');
     
-    // Update the transaction
     await transactionService.updateTransaction(transaction.id, {
       transaction_date: formData.date,
       description: formData.description,
@@ -46,17 +46,14 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
     console.log('Transaction updated successfully');
     
-    // Close modal immediately - don't wait for balance recalculation
     onSave();
-    
   } catch (err: any) {
     console.error('Error updating transaction:', err);
     setError(err.message);
-    setLoading(false); // Only stop loading on error
+  } finally {
+    setLoading(false);
   }
-  // Don't set loading to false on success - modal closes immediately
 };
-
 
   return (
     <div className="modal-overlay" onClick={onClose}>
