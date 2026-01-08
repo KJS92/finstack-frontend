@@ -4,7 +4,48 @@ import { supabase } from '../config/supabase';
 import { transactionService, Transaction } from '../services/transactionService';
 import { accountService, Account } from '../services/accountService';
 import EditTransactionModal from '../components/EditTransactionModal';
+import Toast from '../components/Toast';
 import './TransactionsList.css';
+
+import Toast from '../components/Toast';
+
+// Add state for toast
+const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+// Add useEffect for toast listener and balance refresh
+useEffect(() => {
+  const handleToast = (event: CustomEvent) => {
+    setToast(event.detail);
+  };
+
+  const handleBalancesUpdated = () => {
+    // Reload transactions when balances are updated
+    loadTransactions();
+  };
+
+  window.addEventListener('showToast', handleToast as EventListener);
+  window.addEventListener('balancesUpdated', handleBalancesUpdated);
+
+  return () => {
+    window.removeEventListener('showToast', handleToast as EventListener);
+    window.removeEventListener('balancesUpdated', handleBalancesUpdated);
+  };
+}, []);
+
+// In the JSX, before closing </div>
+return (
+  <div className="transactions-list-container">
+    {/* ... existing code ... */}
+    
+    {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(null)}
+      />
+    )}
+  </div>
+);
 
 const TransactionsList: React.FC = () => {
   const location = useLocation();
