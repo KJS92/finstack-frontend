@@ -153,30 +153,50 @@ class TransactionService {
   }
 
   async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
 
-    const { data: transaction, error: fetchError } = await supabase
-      .from('transactions')
-      .select('account_id')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single();
+  const { data: transaction, error: fetchError } = await supabase
+    .from('transactions')
+    .select('account_id')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single();
 
-    if (fetchError) throw fetchError;
+  if (fetchError) throw fetchError;
 
-    const { error } = await supabase
-      .from('transactions')
-      .update(updates)
-      .eq('id', id)
-      .eq('user_id', user.id);
+  const { error } = await supabase
+    .from('transactions')
+    .update(updates)
+    .eq('id', id)
+    .eq('user_id', user.id);
 
-    if (error) throw error;
+  if (error) throw error;
 
-    if (transaction?.account_id) {
-      await this.recalculateBalances(transaction.account_id);
-    }
+  // Notify user that balance update is happening in background
+  if (transaction?.account_id) {
+    // Show notification via custom event
+    window.dispatchEvent(new CustomEvent('showToast', {
+      detail: { message: 'Updating account balances...', type: 'info' }
+    }));
+
+    // Recalculate in background
+    this.recalculateBalances(transaction.account_id)
+      .then(() => {
+        window.dispatchEvent(new CustomEvent('showToast', {
+          detail: { message: 'Balances updated successfully!', type: 'success' }
+        }));
+        // Trigger data refresh
+        window.dispatchEvent(new CustomEvent('balancesUpdated'));
+      })
+      .catch(err => {
+        console.error('Background balance recalculation failed:', err);
+        window.dispatchEvent(new CustomEvent('showToast', {
+          detail: { message: 'Balance update failed. Please refresh the page.', type: 'error' }
+        }));
+      });
   }
+}
 
   async deleteTransaction(id: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
