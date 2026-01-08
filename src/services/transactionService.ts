@@ -205,6 +205,8 @@ class TransactionService {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  console.log(`🔄 Starting balance recalculation for account: ${accountId}`);
+
   const { data: transactions, error } = await supabase
     .from('transactions')
     .select('*')
@@ -215,15 +217,28 @@ class TransactionService {
 
   if (error) throw error;
 
+  console.log(`📊 Found ${transactions?.length} transactions to recalculate`);
+  
+  if (transactions && transactions.length > 0) {
+    console.log(`📅 Date range: ${transactions[0].transaction_date} to ${transactions[transactions.length - 1].transaction_date}`);
+  }
+
   let runningBalance = 0;
   const updates = [];
   
-  // Calculate all balances first
   for (const txn of transactions || []) {
     if (txn.transaction_type === 'credit') {
       runningBalance += txn.amount;
     } else {
       runningBalance -= txn.amount;
+    }
+    
+    // Log first 3 and last 3 transactions
+    const index = updates.length;
+    if (index < 3 || index >= (transactions?.length || 0) - 3) {
+      console.log(`  ${index + 1}. ${txn.transaction_date} | ${txn.description.substring(0, 30)} | ${txn.transaction_type} ₹${txn.amount} | Balance: ₹${runningBalance}`);
+    } else if (index === 3) {
+      console.log(`  ... (${(transactions?.length || 0) - 6} more transactions) ...`);
     }
     
     updates.push({
@@ -234,10 +249,11 @@ class TransactionService {
 
   // Batch update in chunks of 100
   const chunkSize = 100;
+  console.log(`💾 Updating ${updates.length} transactions in batches of ${chunkSize}...`);
+  
   for (let i = 0; i < updates.length; i += chunkSize) {
     const chunk = updates.slice(i, i + chunkSize);
     
-    // Update transactions in batch
     const updatePromises = chunk.map(update =>
       supabase
         .from('transactions')
@@ -246,9 +262,10 @@ class TransactionService {
     );
     
     await Promise.all(updatePromises);
+    console.log(`  ✅ Updated batch ${Math.floor(i / chunkSize) + 1} (${chunk.length} transactions)`);
   }
 
-  console.log(`Updated ${updates.length} transactions, final balance: ${runningBalance}`);
+  console.log(`✅ Final balance: ₹${runningBalance}`);
 
   // Update the account balance
   const { error: updateError } = await supabase
@@ -258,11 +275,11 @@ class TransactionService {
     .eq('user_id', user.id);
 
   if (updateError) {
-    console.error('Error updating account balance:', updateError);
+    console.error('❌ Error updating account balance:', updateError);
     throw updateError;
   }
   
-  console.log('Account balance updated successfully');
+  console.log(`✅ Account balance updated successfully to ₹${runningBalance}`);
 }
 }
 
