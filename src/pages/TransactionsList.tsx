@@ -7,46 +7,6 @@ import EditTransactionModal from '../components/EditTransactionModal';
 import Toast from '../components/Toast';
 import './TransactionsList.css';
 
-import Toast from '../components/Toast';
-
-// Add state for toast
-const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-// Add useEffect for toast listener and balance refresh
-useEffect(() => {
-  const handleToast = (event: CustomEvent) => {
-    setToast(event.detail);
-  };
-
-  const handleBalancesUpdated = () => {
-    // Reload transactions when balances are updated
-    loadTransactions();
-  };
-
-  window.addEventListener('showToast', handleToast as EventListener);
-  window.addEventListener('balancesUpdated', handleBalancesUpdated);
-
-  return () => {
-    window.removeEventListener('showToast', handleToast as EventListener);
-    window.removeEventListener('balancesUpdated', handleBalancesUpdated);
-  };
-}, []);
-
-// In the JSX, before closing </div>
-return (
-  <div className="transactions-list-container">
-    {/* ... existing code ... */}
-    
-    {toast && (
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast(null)}
-      />
-    )}
-  </div>
-);
-
 const TransactionsList: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -66,39 +26,49 @@ const TransactionsList: React.FC = () => {
     debits: 0,
     count: 0 
   });
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-    useEffect(() => {
+  useEffect(() => {
     checkUser();
     loadData();
   }, []);
 
-  // Handle account filter from Dashboard navigation
- useEffect(() => {
-  checkUser();
-  loadData();
-}, []);
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.accountId && accounts.length > 0) {
+      console.log('Setting account filter to:', state.accountId);
+      setSelectedAccount(state.accountId);
+    }
+  }, [location.state, accounts]);
 
-// Handle account filter from Dashboard navigation - SET ONLY, don't load yet
-useEffect(() => {
-  const state = location.state as any;
-  if (state?.accountId && accounts.length > 0) {
-    console.log('Setting account filter to:', state.accountId);
-    setSelectedAccount(state.accountId);
-  }
-}, [location.state, accounts]);
+  useEffect(() => {
+    if (accounts.length > 0) {
+      console.log('Loading transactions for account:', selectedAccount);
+      loadTransactions();
+    }
+  }, [selectedAccount, accounts]);
 
-// Load transactions when account filter changes OR when accounts load
-useEffect(() => {
-  if (accounts.length > 0) {
-    console.log('Loading transactions for account:', selectedAccount);
-    loadTransactions();
-  }
-}, [selectedAccount, accounts]);
+  useEffect(() => {
+    applyFilters();
+  }, [transactions, dateRange, startDate, endDate]);
 
-// Apply date filters
-useEffect(() => {
-  applyFilters();
-}, [transactions, dateRange, startDate, endDate]);
+  useEffect(() => {
+    const handleToast = (event: CustomEvent) => {
+      setToast(event.detail);
+    };
+
+    const handleBalancesUpdated = () => {
+      loadTransactions();
+    };
+
+    window.addEventListener('showToast', handleToast as EventListener);
+    window.addEventListener('balancesUpdated', handleBalancesUpdated);
+
+    return () => {
+      window.removeEventListener('showToast', handleToast as EventListener);
+      window.removeEventListener('balancesUpdated', handleBalancesUpdated);
+    };
+  }, []);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -107,16 +77,12 @@ useEffect(() => {
     }
   };
 
-    const loadData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       
-      // Load accounts FIRST
       const accountsData = await accountService.getAccounts();
       setAccounts(accountsData);
-      
-      // DON'T load transactions here - let the useEffect handle it
-      // This prevents race condition
       
     } catch (err: any) {
       setError(err.message);
@@ -126,25 +92,24 @@ useEffect(() => {
   };
 
   const loadTransactions = async () => {
-  try {
-    setLoading(true);
-    const accountId = selectedAccount === 'all' ? undefined : selectedAccount;
-    console.log('loadTransactions called with selectedAccount:', selectedAccount);
-    console.log('Fetching transactions for accountId:', accountId);
-    const data = await transactionService.getTransactions(accountId);
-    console.log('Loaded transactions count:', data.length);
-    setTransactions(data);
-  } catch (err: any) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      const accountId = selectedAccount === 'all' ? undefined : selectedAccount;
+      console.log('loadTransactions called with selectedAccount:', selectedAccount);
+      console.log('Fetching transactions for accountId:', accountId);
+      const data = await transactionService.getTransactions(accountId);
+      console.log('Loaded transactions count:', data.length);
+      setTransactions(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const applyFilters = () => {
     let filtered = [...transactions];
 
-    // Apply date range filter
     if (dateRange !== 'all') {
       const now = new Date();
       let filterStartDate: Date | null = null;
@@ -205,7 +170,7 @@ useEffect(() => {
   
   const handleEditSave = async () => {
     setEditingTransaction(null);
-    await loadTransactions(); // Make it async and await
+    await loadTransactions();
   };
 
   const calculateSummary = (txns: Transaction[]) => {
@@ -308,7 +273,6 @@ useEffect(() => {
 
       {error && <div className="error-message">{error}</div>}
 
-      {/* Summary Cards */}
       <div className="summary-section">
         <div className="summary-card">
           <h3>Transactions</h3>
@@ -332,7 +296,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Filters Section */}
       <div className="filters-section">
         <div className="filter-group">
           <label>Filter by Account:</label>
@@ -354,8 +317,8 @@ useEffect(() => {
             <option value="last_month">Last Month</option>
             <option value="last_3_months">Last 3 Months</option>
             <option value="last_6_months">Last 6 Months</option>
-            <option value="this_year">This Year (2025)</option>
-            <option value="last_year">Last Year (2024)</option>
+            <option value="this_year">This Year (2026)</option>
+            <option value="last_year">Last Year (2025)</option>
             <option value="custom">Custom Range</option>
           </select>
         </div>
@@ -451,7 +414,6 @@ useEffect(() => {
         )}
       </div>
       
-      {/* Edit Modal */}
       {editingTransaction && (
         <EditTransactionModal
           transaction={editingTransaction}
@@ -459,7 +421,16 @@ useEffect(() => {
           onSave={handleEditSave}
         />
       )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };
+
 export default TransactionsList;
