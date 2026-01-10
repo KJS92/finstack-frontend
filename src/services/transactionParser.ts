@@ -1,3 +1,5 @@
+import Papa from 'papaparse';
+
 export interface ParsedTransaction {
   transaction_date: string;
   description: string;
@@ -9,43 +11,40 @@ export interface ParsedTransaction {
 
 class TransactionParser {
   parseCSV(content: string): ParsedTransaction[] {
-    const lines = content.trim().split('\n');
-    if (lines.length < 2) {
-      throw new Error('CSV file is empty or invalid');
+    const result = Papa.parse(content, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header: string) => header.trim().toLowerCase()
+    });
+
+    if (result.errors.length > 0) {
+      console.error('CSV parsing errors:', result.errors);
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    console.log('Parsed CSV rows:', result.data.length);
+
     const transactions: ParsedTransaction[] = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+    result.data.forEach((row: any, index: number) => {
+      // Find date field (try multiple possible names)
+      const dateField = row.date || row['transaction date'] || row['txn date'] || row['txn. date'];
       
-      // Skip empty lines
-      if (values.length < 2 || values.every(v => !v)) continue;
-      
-      const dateIndex = this.findHeaderIndex(headers, ['date', 'transaction date', 'txn date', 'txn. date']);
-      const descIndex = this.findHeaderIndex(headers, ['description', 'narration', 'particulars', 'details']);
-      const debitIndex = this.findHeaderIndex(headers, ['debit', 'withdrawal', 'debit amount', 'withdraw']);
-      const creditIndex = this.findHeaderIndex(headers, ['credit', 'deposit', 'credit amount']);
-      const balanceIndex = this.findHeaderIndex(headers, ['balance', 'closing balance', 'available balance', 'bal']);
-
       // Skip rows without valid date
-      const dateStr = values[dateIndex];
-      if (!dateStr || dateStr.trim() === '' || dateStr.toLowerCase() === 'date') continue;
-
-      const transaction = this.parseTransaction(values, {
-        dateIndex,
-        descIndex,
-        debitIndex,
-        creditIndex,
-        balanceIndex
-      });
-
-      // Only add if transaction has valid date
-      if (transaction && transaction.transaction_date) {
-        transactions.push(transaction);
+      if (!dateField || dateField.trim() === '' || dateField.toLowerCase() === 'date') {
+        console.log(`Skipping row ${index + 1}: No valid date`);
+        return;
       }
-    }
+
+      const transaction = this.parseTransactionFromObject(row, index + 1);
+      if (transaction && transaction.transaction_date) {
+        console.log(`✅ Row ${index + 1}: ${transaction.description.substring(0, 40)}...`);
+        transactions.push(transaction);
+      } else {
+        console.log(`❌ Row ${index + 1}: Failed to parse`);
+      }
+    });
+
+    console.log(`Total transactions parsed: ${transactions.length} out of ${result.data.length}`);
 
     if (transactions.length === 0) {
       throw new Error('No valid transactions found in CSV. Please check the file format.');
@@ -54,24 +53,28 @@ class TransactionParser {
     return transactions;
   }
 
-  private parseTransaction(
-    values: string[],
-    indices: {
-      dateIndex: number;
-      descIndex: number;
-      debitIndex: number;
-      creditIndex: number;
-      balanceIndex: number;
-    }
-  ): ParsedTransaction | null {
+  private parseTransactionFromObject(row: any, rowNumber: number): ParsedTransaction | null {
     try {
-      const date = this.parseDate(values[indices.dateIndex]);
-      if (!date) return null; // Skip if date parsing failed
+      // Find date field
+      const dateStr = row.date || row['transaction date'] || row['txn date'] || row['txn. date'];
+      const date = this.parseDate(dateStr);
+      if (!date) {
+        console.log(`Row ${rowNumber}: Invalid date format: ${dateStr}`);
+        return null;
+      }
 
-      const description = values[indices.descIndex] || 'No description';
-      const debitStr = values[indices.debitIndex] || '0';
-      const creditStr = values[indices.creditIndex] || '0';
-      const balanceStr = values[indices.balanceIndex] || null;
+      // Find description field
+      const description = row.description || row.narration || row.particulars || 
+                         row.details || row['transaction details'] || 'No description';
+
+      // Find debit field
+      const debitStr = row.debit || row.withdrawal || row['debit amount'] || row.withdraw || '0';
+      
+      // Find credit field
+      const creditStr = row.credit || row.deposit || row['credit amount'] || '0';
+      
+      // Find balance field
+      const balanceStr = row.balance || row['closing balance'] || row['available balance'] || row.bal || null;
 
       const debitAmount = this.parseAmount(debitStr);
       const creditAmount = this.parseAmount(creditStr);
@@ -86,7 +89,8 @@ class TransactionParser {
         transactionType = 'credit';
         amount = creditAmount;
       } else {
-        return null; // Skip transactions with no amount
+        console.log(`Row ${rowNumber}: No debit or credit amount found`);
+        return null;
       }
 
       const balance = balanceStr ? this.parseAmount(balanceStr) : null;
@@ -100,7 +104,7 @@ class TransactionParser {
         category: 'Uncategorized'
       };
     } catch (error) {
-      console.error('Error parsing transaction:', error);
+      console.error(`Row ${rowNumber} parsing error:`, error);
       return null;
     }
   }
