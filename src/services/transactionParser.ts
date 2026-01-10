@@ -25,15 +25,22 @@ class TransactionParser {
 
     const transactions: ParsedTransaction[] = [];
 
-    result.data.forEach((row: any, index: number) => {
-      // Find date field (try multiple possible names)
-      const dateField = row.date || row['transaction date'] || row['txn date'] || row['txn. date'];
-      
-      // Skip rows without valid date
-      if (!dateField || dateField.trim() === '' || dateField.toLowerCase() === 'date') {
-        console.log(`Skipping row ${index + 1}: No valid date`);
-        return;
-      }
+      result.data.forEach((row: any, index: number) => {
+    // Debug: Show what keys are available
+    if (index === 0) {
+      console.log('CSV Column Names:', Object.keys(row));
+      console.log('First Row Data:', row);
+    }
+  
+    // Find date field (try multiple possible names)
+    const dateField = row.date || row['transaction date'] || row['txn date'] || row['txn. date'] || row['Date'];
+    
+    // Skip rows without valid date
+    if (!dateField || dateField.trim() === '' || dateField.toLowerCase() === 'date') {
+      console.log(`Row ${index + 1} - Available keys:`, Object.keys(row));
+      console.log(`Row ${index + 1} - Date field value:`, dateField);
+      return;
+    }
 
       const transaction = this.parseTransactionFromObject(row, index + 1);
       if (transaction && transaction.transaction_date) {
