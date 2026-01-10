@@ -99,6 +99,9 @@ useEffect(() => {
           <button onClick={() => navigate('/transactions')} className="btn-primary">
             Upload Transactions
           </button>
+          <button onClick={() => navigate('/categories')} className="btn-secondary">
+            Categories
+          </button>
           <button onClick={() => navigate('/profile')} className="btn-secondary">
             Profile
           </button>
