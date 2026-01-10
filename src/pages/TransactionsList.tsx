@@ -54,16 +54,16 @@ const TransactionsList: React.FC = () => {
   useEffect(() => {
     applyFilters();
   }, [transactions, dateRange, startDate, endDate]);
+  useEffect(() => {
+  applyFilters();
+}, [transactions, dateRange, startDate, endDate, selectedCategory]); // Add selectedCategory
 
   useEffect(() => {
     const handleToast = (event: CustomEvent) => {
       setToast(event.detail);
     };
 
-    useEffect(() => {
-  applyFilters();
-}, [transactions, dateRange, startDate, endDate, selectedCategory]); // Add selectedCategory
-
+    
     const getCategoryName = (categoryId: string | null) => {
   if (!categoryId) return { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
   const category = categories.find(c => c.id === categoryId);
