@@ -385,21 +385,28 @@ const TransactionsList: React.FC = () => {
       </div>
 
       <div className="transactions-content">
-        {filteredTransactions.length === 0 ? (
-          <div className="empty-state">
-            <p>No transactions found for the selected filters</p>
-            {dateRange !== 'all' || selectedAccount !== 'all' ? (
-              <button onClick={() => { setDateRange('all'); setSelectedAccount('all'); }} className="btn-secondary">
-                Clear Filters
-              </button>
-            ) : (
-              <button onClick={() => navigate('/transactions')} className="btn-primary">
-                Upload Transactions
-              </button>
-            )}
-          </div>
-        ) : (
-              <div className="table-wrapper">
+  {filteredTransactions.length === 0 ? (
+    <div className="empty-state">
+      <p>No transactions found for the selected filters</p>
+      {dateRange !== 'all' || selectedAccount !== 'all' || selectedCategory !== 'all' ? (
+        <button 
+          onClick={() => { 
+            setDateRange('all'); 
+            setSelectedAccount('all'); 
+            setSelectedCategory('all');
+          }} 
+          className="btn-secondary"
+        >
+          Clear Filters
+        </button>
+      ) : (
+        <button onClick={() => navigate('/transactions')} className="btn-primary">
+          Upload Transactions
+        </button>
+      )}
+    </div>
+  ) : (
+    <div className="table-wrapper">
       <table className="transactions-table">
         <thead>
           <tr>
@@ -459,7 +466,8 @@ const TransactionsList: React.FC = () => {
         </tbody>
       </table>
     </div>
-
+  )}
+</div>
       
       {editingTransaction && (
         <EditTransactionModal
