@@ -23,6 +23,7 @@ const TransactionsList: React.FC = () => {
   const [error, setError] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [summary, setSummary] = useState({ 
     total: 0, 
     credits: 0, 
@@ -62,8 +63,7 @@ const TransactionsList: React.FC = () => {
     const handleToast = (event: CustomEvent) => {
       setToast(event.detail);
     };
-
-    
+ 
     const getCategoryName = (categoryId: string | null) => {
   if (!categoryId) return { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
   const category = categories.find(c => c.id === categoryId);
@@ -92,6 +92,15 @@ const TransactionsList: React.FC = () => {
     }
   };
 
+  const loadCategories = async () => {
+  try {
+    const data = await categoryService.getCategories();
+    setCategories(data);
+  } catch (err: any) {
+    console.error('Error loading categories:', err);
+  }
+};
+  
   const loadData = async () => {
     try {
       setLoading(true);
@@ -126,7 +135,10 @@ const TransactionsList: React.FC = () => {
 
   const applyFilters = () => {
     let filtered = [...transactions];
-
+  
+    if (selectedCategory !== 'all') {
+          filtered = filtered.filter(txn => txn.category_id === selectedCategory);
+        }
     if (dateRange !== 'all') {
       const now = new Date();
       let filterStartDate: Date | null = null;
@@ -162,9 +174,6 @@ const TransactionsList: React.FC = () => {
           if (endDate) filterEndDate = new Date(endDate);
           break;
       }
-      if (selectedCategory !== 'all') {
-          filtered = filtered.filter(txn => txn.category_id === selectedCategory);
-        }
 
       if (filterStartDate || filterEndDate) {
         filtered = filtered.filter(txn => {
