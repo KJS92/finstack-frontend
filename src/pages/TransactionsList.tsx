@@ -16,13 +16,13 @@ const TransactionsList: React.FC = () => {
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [summary, setSummary] = useState({ 
     total: 0, 
     credits: 0, 
@@ -53,23 +53,12 @@ const TransactionsList: React.FC = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [transactions, dateRange, startDate, endDate]);
-  useEffect(() => {
-  applyFilters();
-}, [transactions, dateRange, startDate, endDate, selectedCategory]); // Add selectedCategory
+  }, [transactions, dateRange, startDate, endDate, selectedCategory]);
 
   useEffect(() => {
     const handleToast = (event: CustomEvent) => {
       setToast(event.detail);
     };
- 
-    const getCategoryName = (categoryId: string | null) => {
-  if (!categoryId) return { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
-  const category = categories.find(c => c.id === categoryId);
-  return category 
-    ? { name: category.name, icon: category.icon, color: category.color }
-    : { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
-};
 
     const handleBalancesUpdated = () => {
       loadTransactions();
@@ -92,13 +81,13 @@ const TransactionsList: React.FC = () => {
   };
 
   const loadCategories = async () => {
-  try {
-    const data = await categoryService.getCategories();
-    setCategories(data);
-  } catch (err: any) {
-    console.error('Error loading categories:', err);
-  }
-};
+    try {
+      const data = await categoryService.getCategories();
+      setCategories(data);
+    } catch (err: any) {
+      console.error('Error loading categories:', err);
+    }
+  };
   
   const loadData = async () => {
     try {
@@ -107,7 +96,7 @@ const TransactionsList: React.FC = () => {
       const accountsData = await accountService.getAccounts();
       setAccounts(accountsData);
 
-       await loadCategories();
+      await loadCategories();
       
     } catch (err: any) {
       setError(err.message);
@@ -136,8 +125,9 @@ const TransactionsList: React.FC = () => {
     let filtered = [...transactions];
   
     if (selectedCategory !== 'all') {
-          filtered = filtered.filter(txn => txn.category_id === selectedCategory);
-        }
+      filtered = filtered.filter(txn => txn.category_id === selectedCategory);
+    }
+
     if (dateRange !== 'all') {
       const now = new Date();
       let filterStartDate: Date | null = null;
@@ -260,6 +250,14 @@ const TransactionsList: React.FC = () => {
     return account?.name || `Account (${accountId.substring(0, 8)}...)`;
   };
 
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
+    const category = categories.find(c => c.id === categoryId);
+    return category 
+      ? { name: category.name, icon: category.icon, color: category.color }
+      : { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
+  };
+
   const getDateRangeLabel = () => {
     switch (dateRange) {
       case 'this_month': return 'This Month';
@@ -336,17 +334,18 @@ const TransactionsList: React.FC = () => {
             ))}
           </select>
         </div>
-            <div className="filter-group">
-        <label>Filter by Category:</label>
-        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-          <option value="all">All Categories</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.icon} {category.name}
-            </option>
-          ))}
-        </select>
-      </div>
+
+        <div className="filter-group">
+          <label>Filter by Category:</label>
+          <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+            <option value="all">All Categories</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.icon} {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="filter-group">
           <label>Filter by Date:</label>
@@ -385,89 +384,89 @@ const TransactionsList: React.FC = () => {
       </div>
 
       <div className="transactions-content">
-  {filteredTransactions.length === 0 ? (
-    <div className="empty-state">
-      <p>No transactions found for the selected filters</p>
-      {dateRange !== 'all' || selectedAccount !== 'all' || selectedCategory !== 'all' ? (
-        <button 
-          onClick={() => { 
-            setDateRange('all'); 
-            setSelectedAccount('all'); 
-            setSelectedCategory('all');
-          }} 
-          className="btn-secondary"
-        >
-          Clear Filters
-        </button>
-      ) : (
-        <button onClick={() => navigate('/transactions')} className="btn-primary">
-          Upload Transactions
-        </button>
-      )}
-    </div>
-  ) : (
-    <div className="table-wrapper">
-      <table className="transactions-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Account</th>
-            <th>Description</th>
-            <th>Category</th>
-            <th>Type</th>
-            <th>Amount</th>
-            <th>Balance</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredTransactions.map((transaction) => {
-            const categoryInfo = getCategoryName(transaction.category_id);
-            return (
-              <tr key={transaction.id}>
-                <td>{formatDate(transaction.transaction_date)}</td>
-                <td>{getAccountName(transaction.account_id)}</td>
-                <td className="description">{transaction.description}</td>
-                <td>
-                  <span className="category-badge" style={{ backgroundColor: categoryInfo.color }}>
-                    {categoryInfo.icon} {categoryInfo.name}
-                  </span>
-                </td>
-                <td>
-                  <span className={`type-badge ${transaction.transaction_type}`}>
-                    {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
-                  </span>
-                </td>
-                <td className={`amount ${transaction.transaction_type}`}>
-                  {formatCurrency(transaction.amount)}
-                </td>
-                <td>
-                  {transaction.balance ? formatCurrency(transaction.balance) : '-'}
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <button 
-                      onClick={() => handleEdit(transaction)}
-                      className="btn-edit-small"
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(transaction.id)}
-                      className="btn-delete-small"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  )}
-</div>
+        {filteredTransactions.length === 0 ? (
+          <div className="empty-state">
+            <p>No transactions found for the selected filters</p>
+            {dateRange !== 'all' || selectedAccount !== 'all' || selectedCategory !== 'all' ? (
+              <button 
+                onClick={() => { 
+                  setDateRange('all'); 
+                  setSelectedAccount('all'); 
+                  setSelectedCategory('all');
+                }} 
+                className="btn-secondary"
+              >
+                Clear Filters
+              </button>
+            ) : (
+              <button onClick={() => navigate('/transactions')} className="btn-primary">
+                Upload Transactions
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="transactions-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Account</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Balance</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTransactions.map((transaction) => {
+                  const categoryInfo = getCategoryName(transaction.category_id);
+                  return (
+                    <tr key={transaction.id}>
+                      <td>{formatDate(transaction.transaction_date)}</td>
+                      <td>{getAccountName(transaction.account_id)}</td>
+                      <td className="description">{transaction.description}</td>
+                      <td>
+                        <span className="category-badge" style={{ backgroundColor: categoryInfo.color }}>
+                          {categoryInfo.icon} {categoryInfo.name}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`type-badge ${transaction.transaction_type}`}>
+                          {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
+                        </span>
+                      </td>
+                      <td className={`amount ${transaction.transaction_type}`}>
+                        {formatCurrency(transaction.amount)}
+                      </td>
+                      <td>
+                        {transaction.balance ? formatCurrency(transaction.balance) : '-'}
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          <button 
+                            onClick={() => handleEdit(transaction)}
+                            className="btn-edit-small"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(transaction.id)}
+                            className="btn-delete-small"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
       
       {editingTransaction && (
         <EditTransactionModal
