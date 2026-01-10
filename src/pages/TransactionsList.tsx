@@ -336,6 +336,17 @@ const TransactionsList: React.FC = () => {
             ))}
           </select>
         </div>
+            <div className="filter-group">
+        <label>Filter by Category:</label>
+        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+          <option value="all">All Categories</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.icon} {category.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
         <div className="filter-group">
           <label>Filter by Date:</label>
@@ -395,6 +406,7 @@ const TransactionsList: React.FC = () => {
                   <th>Date</th>
                   <th>Account</th>
                   <th>Description</th>
+                  <th>Category</th>
                   <th>Type</th>
                   <th>Amount</th>
                   <th>Balance</th>
@@ -402,7 +414,9 @@ const TransactionsList: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredTransactions.map((transaction) => (
+                {filteredTransactions.map((transaction) => {
+                const categoryInfo = getCategoryName(transaction.category_id); // ADD THIS
+                return (
                   <tr key={transaction.id}>
                     <td>{formatDate(transaction.transaction_date)}</td>
                     <td>{getAccountName(transaction.account_id)}</td>
