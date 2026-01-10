@@ -23,7 +23,6 @@ const TransactionsList: React.FC = () => {
   const [error, setError] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [summary, setSummary] = useState({ 
     total: 0, 
     credits: 0, 
