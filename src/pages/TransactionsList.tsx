@@ -399,62 +399,67 @@ const TransactionsList: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="table-wrapper">
-            <table className="transactions-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Account</th>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th>Type</th>
-                  <th>Amount</th>
-                  <th>Balance</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((transaction) => {
-                const categoryInfo = getCategoryName(transaction.category_id); // ADD THIS
-                return (
-                  <tr key={transaction.id}>
-                    <td>{formatDate(transaction.transaction_date)}</td>
-                    <td>{getAccountName(transaction.account_id)}</td>
-                    <td className="description">{transaction.description}</td>
-                    <td>
-                      <span className={`type-badge ${transaction.transaction_type}`}>
-                        {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
-                      </span>
-                    </td>
-                    <td className={`amount ${transaction.transaction_type}`}>
-                      {formatCurrency(transaction.amount)}
-                    </td>
-                    <td>
-                      {transaction.balance ? formatCurrency(transaction.balance) : '-'}
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          onClick={() => handleEdit(transaction)}
-                          className="btn-edit-small"
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(transaction.id)}
-                          className="btn-delete-small"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              <div className="table-wrapper">
+      <table className="transactions-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Account</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Balance</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredTransactions.map((transaction) => {
+            const categoryInfo = getCategoryName(transaction.category_id);
+            return (
+              <tr key={transaction.id}>
+                <td>{formatDate(transaction.transaction_date)}</td>
+                <td>{getAccountName(transaction.account_id)}</td>
+                <td className="description">{transaction.description}</td>
+                <td>
+                  <span className="category-badge" style={{ backgroundColor: categoryInfo.color }}>
+                    {categoryInfo.icon} {categoryInfo.name}
+                  </span>
+                </td>
+                <td>
+                  <span className={`type-badge ${transaction.transaction_type}`}>
+                    {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
+                  </span>
+                </td>
+                <td className={`amount ${transaction.transaction_type}`}>
+                  {formatCurrency(transaction.amount)}
+                </td>
+                <td>
+                  {transaction.balance ? formatCurrency(transaction.balance) : '-'}
+                </td>
+                <td>
+                  <div className="action-buttons">
+                    <button 
+                      onClick={() => handleEdit(transaction)}
+                      className="btn-edit-small"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(transaction.id)}
+                      className="btn-delete-small"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+
       
       {editingTransaction && (
         <EditTransactionModal
