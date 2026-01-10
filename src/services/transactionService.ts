@@ -10,6 +10,7 @@ export interface Transaction {
   amount: number;
   balance: number | null;
   category: string | null;
+  category_id: string | null;
   is_verified: boolean;
   created_at: string;
 }
