@@ -5,6 +5,7 @@ import { transactionService, Transaction } from '../services/transactionService'
 import { accountService, Account } from '../services/accountService';
 import EditTransactionModal from '../components/EditTransactionModal';
 import { categoryService, Category } from '../services/categoryService';
+import { categorizationService } from '../services/categorizationService';
 import Toast from '../components/Toast';
 import './TransactionsList.css';
 
@@ -18,6 +19,7 @@ const TransactionsList: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [bulkCategorizing, setBulkCategorizing] = useState(false);
   const [dateRange, setDateRange] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -224,6 +226,45 @@ const TransactionsList: React.FC = () => {
     }
   };
 
+    const handleBulkCategorize = async () => {
+    if (!window.confirm('This will auto-categorize all uncategorized transactions based on keywords. Continue?')) {
+      return;
+    }
+  
+    setBulkCategorizing(true);
+    
+    try {
+      // Get uncategorized transactions
+      const uncategorized = transactions.filter(t => !t.category_id);
+      
+      if (uncategorized.length === 0) {
+        setToast({ message: 'All transactions are already categorized!', type: 'info' });
+        setBulkCategorizing(false);
+        return;
+      }
+  
+      setToast({ message: `Categorizing ${uncategorized.length} transactions...`, type: 'info' });
+  
+      const result = await categorizationService.autoCategorizeTransactions(uncategorized);
+      
+      if (result.categorized > 0) {
+        await categorizationService.applyCategorizationResults(result.results);
+        await loadTransactions();
+        setToast({ 
+          message: `Successfully categorized ${result.categorized} transactions! ${result.uncategorized} remain uncategorized.`, 
+          type: 'success' 
+        });
+      } else {
+        setToast({ message: 'No transactions could be auto-categorized.', type: 'info' });
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setToast({ message: 'Bulk categorization failed.', type: 'error' });
+    } finally {
+      setBulkCategorizing(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/auth');
@@ -284,6 +325,13 @@ const TransactionsList: React.FC = () => {
         <div className="header-actions">
           <button onClick={() => navigate('/transactions')} className="btn-primary">
             Upload New
+          </button>
+           <button 
+            onClick={handleBulkCategorize} 
+            className="btn-secondary" 
+            disabled={bulkCategorizing}
+          >
+            {bulkCategorizing ? 'Categorizing...' : '🤖 Auto-Categorize'}
           </button>
           <button onClick={() => navigate('/dashboard')} className="btn-secondary">
             Dashboard
