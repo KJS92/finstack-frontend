@@ -14,7 +14,8 @@ class TransactionParser {
     const result = Papa.parse(content, {
     header: true,
     skipEmptyLines: true,
-    delimiter: ',',  // Force comma delimiter
+    delimiter: '',  // Add this line
+    delimitersToGuess: [',', ';', '\t', '|'],
     transformHeader: (header: string) => header.trim().toLowerCase()
   });
 
