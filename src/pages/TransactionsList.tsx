@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase';
 import { transactionService, Transaction } from '../services/transactionService';
 import { accountService, Account } from '../services/accountService';
 import EditTransactionModal from '../components/EditTransactionModal';
+import { categoryService, Category } from '../services/categoryService';
 import Toast from '../components/Toast';
 import './TransactionsList.css';
 
@@ -20,6 +21,8 @@ const TransactionsList: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [summary, setSummary] = useState({ 
     total: 0, 
     credits: 0, 
@@ -57,6 +60,18 @@ const TransactionsList: React.FC = () => {
       setToast(event.detail);
     };
 
+    useEffect(() => {
+  applyFilters();
+}, [transactions, dateRange, startDate, endDate, selectedCategory]); // Add selectedCategory
+
+    const getCategoryName = (categoryId: string | null) => {
+  if (!categoryId) return { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
+  const category = categories.find(c => c.id === categoryId);
+  return category 
+    ? { name: category.name, icon: category.icon, color: category.color }
+    : { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
+};
+
     const handleBalancesUpdated = () => {
       loadTransactions();
     };
@@ -83,6 +98,8 @@ const TransactionsList: React.FC = () => {
       
       const accountsData = await accountService.getAccounts();
       setAccounts(accountsData);
+
+       await loadCategories();
       
     } catch (err: any) {
       setError(err.message);
@@ -145,6 +162,9 @@ const TransactionsList: React.FC = () => {
           if (endDate) filterEndDate = new Date(endDate);
           break;
       }
+      if (selectedCategory !== 'all') {
+          filtered = filtered.filter(txn => txn.category_id === selectedCategory);
+        }
 
       if (filterStartDate || filterEndDate) {
         filtered = filtered.filter(txn => {
