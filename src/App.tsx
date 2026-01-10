@@ -12,6 +12,7 @@ import PasswordReset from './pages/PasswordReset';
 import UpdatePassword from './pages/UpdatePassword';
 import AuthHandler from './components/AuthHandler';
 import AddTransaction from './pages/AddTransaction';
+import Categories from './pages/Categories';
 import './App.css';
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/password-reset" element={<PasswordReset />} />
           <Route path="/update-password" element={<UpdatePassword />} />
+          <Route path="/categories" element={<Categories />} />
         </Routes>
       </div>
     </Router>
