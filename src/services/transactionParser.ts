@@ -12,10 +12,11 @@ export interface ParsedTransaction {
 class TransactionParser {
   parseCSV(content: string): ParsedTransaction[] {
     const result = Papa.parse(content, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (header: string) => header.trim().toLowerCase()
-    });
+    header: true,
+    skipEmptyLines: true,
+    delimiter: ',',  // Force comma delimiter
+    transformHeader: (header: string) => header.trim().toLowerCase()
+  });
 
     if (result.errors.length > 0) {
       console.error('CSV parsing errors:', result.errors);
