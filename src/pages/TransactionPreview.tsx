@@ -41,6 +41,10 @@ const TransactionPreview: React.FC = () => {
   try {
     setLoading(true);
     setError('');
+    
+    console.log('Type of file:', typeof file);
+    console.log('File value:', file);
+    console.log('Is File object?', file instanceof File);
 
     // READ the file content first
     const fileContent = await file.text();
