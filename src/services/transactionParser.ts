@@ -12,16 +12,26 @@ export interface ParsedTransaction {
 class TransactionParser {
   parseCSV(content: string): ParsedTransaction[] {
     const result = Papa.parse(content, {
-    header: true,
-    skipEmptyLines: true,
-    delimiter: '',  // Add this line
-    delimitersToGuess: [',', ';', '\t', '|'],
-    transformHeader: (header: string) => header.trim().toLowerCase()
-  });
+  header: true,
+  skipEmptyLines: true,
+  delimiter: '',
+  delimitersToGuess: [',', ';', '\t', '|'],
+  transformHeader: (header: string) => header.trim().toLowerCase()
+});
 
-    if (result.errors.length > 0) {
-      console.error('CSV parsing errors:', result.errors);
-    }
+// 🔍 NEW DEBUG LOGS - Add these
+console.log('==== PAPAPARSE DEBUG ====');
+console.log('Raw content (first 200 chars):', content.substring(0, 200));
+console.log('Detected delimiter:', result.meta.delimiter);
+console.log('Fields found:', result.meta.fields);
+console.log('Number of rows:', result.data.length);
+console.log('First row keys:', result.data[0] ? Object.keys(result.data[0]) : 'No data');
+console.log('First row values:', result.data[0]);
+console.log('========================');
+
+if (result.errors.length > 0) {
+  console.error('CSV parsing errors:', result.errors);
+}
 
     console.log('Parsed CSV rows:', result.data.length);
 
