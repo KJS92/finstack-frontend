@@ -38,36 +38,39 @@ const TransactionPreview: React.FC = () => {
   };
 
   const parseFile = async () => {
-    try {
-      setLoading(true);
-      setError('');
+  try {
+    setLoading(true);
+    setError('');
 
-      // Parse the file content
-      const parsedTransactions = transactionParser.parseCSV(file);
-      setTransactions(parsedTransactions);
+    // READ the file content first
+    const fileContent = await file.text();
+    
+    // Now parse the STRING content
+    const parsedTransactions = transactionParser.parseCSV(fileContent);
+    setTransactions(parsedTransactions);
 
-      // Calculate summary
-      const summary = {
-        total: parsedTransactions.length,
-        credits: parsedTransactions
-          .filter(t => t.transaction_type === 'credit')
-          .reduce((sum, t) => sum + t.amount, 0),
-        debits: parsedTransactions
-          .filter(t => t.transaction_type === 'debit')
-          .reduce((sum, t) => sum + t.amount, 0)
-      };
-      setSummary(summary);
+    // Calculate summary
+    const summary = {
+      total: parsedTransactions.length,
+      credits: parsedTransactions
+        .filter(t => t.transaction_type === 'credit')
+        .reduce((sum, t) => sum + t.amount, 0),
+      debits: parsedTransactions
+        .filter(t => t.transaction_type === 'debit')
+        .reduce((sum, t) => sum + t.amount, 0)
+    };
+    setSummary(summary);
 
-      // Check for duplicates
-      await checkForDuplicates(parsedTransactions);
+    // Check for duplicates
+    await checkForDuplicates(parsedTransactions);
 
-    } catch (err: any) {
-      setError(err.message || 'Failed to parse file');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  } catch (err: any) {
+    setError(err.message || 'Failed to parse file');
+  } finally {
+    setLoading(false);
+  }
+};
+  
   const checkForDuplicates = async (txns: ParsedTransaction[]) => {
     try {
       setChecking(true);
