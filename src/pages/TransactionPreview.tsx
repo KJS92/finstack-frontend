@@ -45,12 +45,15 @@ const TransactionPreview: React.FC = () => {
     console.log('Type of file:', typeof file);
     console.log('File value:', file);
     console.log('Is File object?', file instanceof File);
-
-    // READ the file content first
-    const fileContent = await file.text();
-    
+   
     // Now parse the STRING content
-    const parsedTransactions = transactionParser.parseCSV(fileContent);
+    // Remove wrapping quotes from each line
+    const cleanedContent = file
+      .split('\n')
+      .map((line: string) => line.replace(/^"|"$/g, ''))
+      .join('\n');
+    
+    const parsedTransactions = transactionParser.parseCSV(cleanedContent);
     setTransactions(parsedTransactions);
 
     // Calculate summary
