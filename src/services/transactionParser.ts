@@ -14,8 +14,8 @@ class TransactionParser {
     const result = Papa.parse(content, {
   header: true,
   skipEmptyLines: true,
-  delimiter: '',
-  delimitersToGuess: [',', ';', '\t', '|'],
+  delimiter: ',',
+ // delimitersToGuess: [',', ';', '\t', '|'],
   transformHeader: (header: string) => header.trim().toLowerCase()
 });
 
@@ -73,60 +73,63 @@ if (result.errors.length > 0) {
   }
 
   private parseTransactionFromObject(row: any, rowNumber: number): ParsedTransaction | null {
-    try {
-      // Find date field
-      const dateStr = row.date || row['transaction date'] || row['txn date'] || row['txn. date'];
-      const date = this.parseDate(dateStr);
-      if (!date) {
-        console.log(`Row ${rowNumber}: Invalid date format: ${dateStr}`);
-        return null;
-      }
-
-      // Find description field
-      const description = row.description || row.narration || row.particulars || 
-                         row.details || row['transaction details'] || 'No description';
-
-      // Find debit field
-      const debitStr = row.debit || row.withdrawal || row['debit amount'] || row.withdraw || '0';
-      
-      // Find credit field
-      const creditStr = row.credit || row.deposit || row['credit amount'] || '0';
-      
-      // Find balance field
-      const balanceStr = row.balance || row['closing balance'] || row['available balance'] || row.bal || null;
-
-      const debitAmount = this.parseAmount(debitStr);
-      const creditAmount = this.parseAmount(creditStr);
-
-      let transactionType: 'debit' | 'credit';
-      let amount: number;
-
-      if (debitAmount > 0) {
-        transactionType = 'debit';
-        amount = debitAmount;
-      } else if (creditAmount > 0) {
-        transactionType = 'credit';
-        amount = creditAmount;
-      } else {
-        console.log(`Row ${rowNumber}: No debit or credit amount found`);
-        return null;
-      }
-
-      const balance = balanceStr ? this.parseAmount(balanceStr) : null;
-
-      return {
-        transaction_date: date,
-        description,
-        transaction_type: transactionType,
-        amount,
-        balance,
-        category: 'Uncategorized'
-      };
-    } catch (error) {
-      console.error(`Row ${rowNumber} parsing error:`, error);
+  try {
+    // Find date field
+    const dateStr = row.date || row['transaction date'] || row['txn date'] || row['txn. date'];
+    const date = this.parseDate(dateStr);
+    if (!date) {
+      console.log(`Row ${rowNumber}: Invalid date format: ${dateStr}`);
       return null;
     }
+
+    // Find description field
+    const description = row.description || row.narration || row.particulars || 
+                       row.details || row['transaction details'] || 'No description';
+
+    // Find debit field
+    const debitStr = row.debit || row.withdrawal || row['debit amount'] || row.withdraw || '0';
+    
+    // Find credit field
+    const creditStr = row.credit || row.deposit || row['credit amount'] || '0';
+    
+    // Find balance field
+    const balanceStr = row.balance || row['closing balance'] || row['available balance'] || row.bal || null;
+    const balance = balanceStr ? this.parseAmount(balanceStr) : null;
+
+    const debitAmount = this.parseAmount(debitStr);
+    const creditAmount = this.parseAmount(creditStr);
+
+    let transactionType: 'debit' | 'credit';
+    let amount: number;
+
+    if (debitAmount > 0) {
+      transactionType = 'debit';
+      amount = debitAmount;
+    } else if (creditAmount > 0) {
+      transactionType = 'credit';
+      amount = creditAmount;
+    } else if (balance !== null && description.toLowerCase().includes('opening')) {
+      // ✅ Handle opening balance (has balance but no debit/credit)
+      transactionType = 'credit';
+      amount = balance;
+    } else {
+      console.log(`Row ${rowNumber}: No debit or credit amount found`);
+      return null;
+    }
+
+    return {
+      transaction_date: date,
+      description,
+      transaction_type: transactionType,
+      amount,
+      balance,
+      category: 'Uncategorized'
+    };
+  } catch (error) {
+    console.error(`Row ${rowNumber} parsing error:`, error);
+    return null;
   }
+}
 
   private parseDate(dateStr: string): string | null {
     if (!dateStr || dateStr.trim() === '') return null;
