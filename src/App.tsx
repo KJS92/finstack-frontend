@@ -13,6 +13,7 @@ import UpdatePassword from './pages/UpdatePassword';
 import AuthHandler from './components/AuthHandler';
 import AddTransaction from './pages/AddTransaction';
 import Categories from './pages/Categories';
+import Budgets from './pages/Budgets';
 import './App.css';
 
 function App() {
@@ -65,6 +66,7 @@ function App() {
           <Route path="/password-reset" element={<PasswordReset />} />
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/categories" element={<Categories />} />
+          <Route path="/budgets" element={<Budgets />} />
         </Routes>
       </div>
     </Router>
