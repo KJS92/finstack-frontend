@@ -511,8 +511,8 @@ const TransactionsList: React.FC = () => {
                       <td>{getAccountName(transaction.account_id)}</td>
                       <td className="description">{transaction.description}</td>
                       <td>
-                        <span className="category-badge" style={{ backgroundColor: categoryInfo.color }}>
-                          {categoryInfo.icon} {categoryInfo.name}
+                        <span className="category-badge" style={{ backgroundColor: categoryInfo.color || '#6B7280' }}>
+  {categoryInfo.icon || '📌'} {categoryInfo.name || 'Uncategorized'}
                         </span>
                       </td>
                       <td>
