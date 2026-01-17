@@ -49,7 +49,7 @@ const Categories: React.FC = () => {
       setFormData({
         name: category.name,
         icon: category.icon || '📌',
-        color: category.color || '#3B82F6'
+        color: category.color || '#6B7280'
       });
     } else {
       setEditingCategory(null);
@@ -139,7 +139,7 @@ const Categories: React.FC = () => {
       <div className="categories-grid">
         {categories.map((category) => (
           <div key={category.id} className="category-card">
-            <div className="category-icon" style={{ backgroundColor: category.color || '#3B82F6' }}>
+            <div className="category-icon" style={{ backgroundColor: category.color || '#6B7280' }}>
               {category.icon}
             </div>
             <div className="category-info">
