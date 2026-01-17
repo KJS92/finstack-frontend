@@ -139,7 +139,7 @@ const Categories: React.FC = () => {
       <div className="categories-grid">
         {categories.map((category) => (
           <div key={category.id} className="category-card">
-            <div className="category-icon" style={{ backgroundColor: category.color }}>
+            <div className="category-icon" style={{ backgroundColor: category.color || '#3B82F6' }}>
               {category.icon}
             </div>
             <div className="category-info">
