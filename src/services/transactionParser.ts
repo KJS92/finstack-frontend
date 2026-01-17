@@ -74,6 +74,18 @@ if (result.errors.length > 0) {
 
   private parseTransactionFromObject(row: any, rowNumber: number): ParsedTransaction | null {
   try {
+   // 🔍 DEBUG: Log first row details
+    if (rowNumber === 1) {
+      console.log('=== ROW 1 DEBUG ===');
+      console.log('All keys:', Object.keys(row));
+      console.log('Date:', row.date);
+      console.log('Description:', row.description);
+      console.log('Transaction Details:', row['transaction details']);
+      console.log('Debit:', row.debit);
+      console.log('Credit:', row.credit);
+      console.log('Balance:', row.balance);
+      console.log('==================');
+    }
     // Find date field
     const dateStr = row.date || row['transaction date'] || row['txn date'] || row['txn. date'];
     const date = this.parseDate(dateStr);
@@ -83,8 +95,8 @@ if (result.errors.length > 0) {
     }
 
     // Find description field
-    const description = row.description || row.narration || row.particulars || 
-                       row.details || row['transaction details'] || 'No description';
+    const description = row['transaction details'] || row.description || 
+                   row.narration || row.particulars || row.details || 'No description';
 
     // Find debit field
     const debitStr = row.debit || row.withdrawal || row['debit amount'] || row.withdraw || '0';
