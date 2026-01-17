@@ -1,28 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { budgetService, BudgetWithSpending } from '../services/budgetService';
-import BudgetCard from '../components/budgets/BudgetCard';
-import BudgetForm from '../components/budgets/BudgetForm';
+import { supabase } from '../config/supabase';
 import './Budgets.css';
-import { Plus, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
 const Budgets: React.FC = () => {
+  const navigate = useNavigate();
   const [budgets, setBudgets] = useState<BudgetWithSpending[]>([]);
   const [summary, setSummary] = useState({ totalBudget: 0, totalSpent: 0, totalRemaining: 0 });
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
+    checkUser();
     loadBudgets();
   }, []);
+
+  const checkUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/auth');
+    } else {
+      setUserEmail(session.user.email || '');
+    }
+  };
 
   const loadBudgets = async () => {
     try {
       setLoading(true);
+      console.log('Loading budgets...'); // Debug
       const [budgetsData, summaryData] = await Promise.all([
         budgetService.getBudgetsWithSpending(),
         budgetService.getCurrentMonthSummary()
       ]);
+      console.log('Budgets loaded:', budgetsData); // Debug
+      console.log('Summary:', summaryData); // Debug
       setBudgets(budgetsData);
       setSummary(summaryData);
     } catch (error) {
@@ -43,118 +56,168 @@ const Budgets: React.FC = () => {
     }
   };
 
-  const handleEdit = (budget: BudgetWithSpending) => {
-    setEditingBudget(budget);
-    setShowForm(true);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
   };
 
-  const handleFormClose = () => {
-    setShowForm(false);
-    setEditingBudget(null);
-    loadBudgets();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   const overallPercentage = summary.totalBudget > 0 
     ? (summary.totalSpent / summary.totalBudget) * 100 
     : 0;
 
+  if (loading) {
+    return <div className="dashboard-container"><p>Loading budgets...</p></div>;
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+    <div className="dashboard-container">
+      {/* Header - matching Dashboard style */}
+      <header className="dashboard-header">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Budgets</h1>
-          <p className="text-gray-600 mt-1">Track your spending against budgets</p>
+          <h1>Budgets</h1>
+          <p className="user-email">{userEmail}</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={20} />
-          Create Budget
-        </button>
-      </div>
-
-           {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Budget</p>
-              <p className="text-2xl font-bold text-gray-900">₹{summary.totalBudget.toLocaleString('en-IN')}</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <DollarSign className="text-blue-600" size={24} />
-            </div>
-          </div>
-        </div>
-      
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Spent</p>
-              <p className="text-2xl font-bold text-red-600">₹{summary.totalSpent.toLocaleString('en-IN')}</p>
-              <p className="text-sm text-gray-500 mt-1">{overallPercentage.toFixed(1)}% of budget</p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-full">
-              <TrendingDown className="text-red-600" size={24} />
-            </div>
-          </div>
-        </div>
-      
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Remaining</p>
-              <p className="text-2xl font-bold text-green-600">₹{summary.totalRemaining.toLocaleString('en-IN')}</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <TrendingUp className="text-green-600" size={24} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Budget Cards */}
-      {budgets.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <DollarSign className="mx-auto text-gray-400 mb-4" size={48} />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No budgets yet</h3>
-          <p className="text-gray-600 mb-6">Create your first budget to start tracking your spending</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            Create Your First Budget
+        <div className="header-actions">
+          <button onClick={() => navigate('/add-transaction')} className="btn-primary">
+            Add Transaction
+          </button>
+          <button onClick={() => navigate('/transactions')} className="btn-primary">
+            Upload Transactions
+          </button>
+          <button onClick={() => navigate('/budgets')} className="btn-secondary active">
+            Budgets
+          </button>
+          <button onClick={() => navigate('/categories')} className="btn-secondary">
+            Categories
+          </button>
+          <button onClick={() => navigate('/profile')} className="btn-secondary">
+            Profile
+          </button>
+          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
+            Dashboard
+          </button>
+          <button onClick={handleLogout} className="btn-logout">
+            Logout
           </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {budgets.map((budget) => (
-            <BudgetCard
-              key={budget.id}
-              budget={budget}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
+      </header>
 
-      {/* Budget Form Modal */}
+      {/* Summary Cards */}
+      <div className="dashboard-summary">
+        <div className="summary-card">
+          <h3>Total Budget</h3>
+          <p className="amount">{formatCurrency(summary.totalBudget)}</p>
+        </div>
+        <div className="summary-card">
+          <h3>Total Spent</h3>
+          <p className="amount spent">{formatCurrency(summary.totalSpent)}</p>
+          <p className="percentage">{overallPercentage.toFixed(1)}% of budget</p>
+        </div>
+        <div className="summary-card">
+          <h3>Remaining</h3>
+          <p className="amount remaining">{formatCurrency(summary.totalRemaining)}</p>
+        </div>
+      </div>
+
+      {/* Budgets Section */}
+      <div className="dashboard-section">
+        <div className="section-header">
+          <h2>Your Budgets</h2>
+          <button onClick={() => setShowForm(true)} className="btn-link">
+            + Create Budget
+          </button>
+        </div>
+        
+        {budgets.length === 0 ? (
+          <div className="empty-state">
+            <p>No budgets yet</p>
+            <button onClick={() => setShowForm(true)} className="btn-primary">
+              Create Your First Budget
+            </button>
+          </div>
+        ) : (
+          <div className="budgets-grid">
+            {budgets.map((budget) => {
+              const isOverBudget = budget.spent > budget.amount;
+              const isWarning = budget.percentage >= 80 && !isOverBudget;
+              
+              return (
+                <div key={budget.id} className="budget-card">
+                  <div className="budget-header">
+                    <div className="budget-title">
+                      <span className="budget-icon">{budget.category_icon || '📊'}</span>
+                      <div>
+                        <h4>{budget.category_name || 'General Budget'}</h4>
+                        <p className="budget-period">{budget.period || 'Monthly'}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => handleDelete(budget.id)} className="btn-delete">
+                      🗑️
+                    </button>
+                  </div>
+
+                  <div className="budget-progress">
+                    <div className="progress-info">
+                      <span>Spent</span>
+                      <span className={isOverBudget ? 'over-budget' : ''}>
+                        {formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}
+                      </span>
+                    </div>
+                    <div className="progress-bar">
+                      <div 
+                        className={`progress-fill ${isOverBudget ? 'over' : isWarning ? 'warning' : 'safe'}`}
+                        style={{ width: `${Math.min(budget.percentage, 100)}%` }}
+                      />
+                    </div>
+                    <div className="progress-footer">
+                      <span>{budget.percentage.toFixed(1)}%</span>
+                      {isOverBudget && (
+                        <span className="alert">Over by {formatCurrency(budget.spent - budget.amount)}</span>
+                      )}
+                      {isWarning && <span className="warning-text">Approaching limit</span>}
+                    </div>
+                  </div>
+
+                  <div className="budget-footer">
+                    <div className="footer-row">
+                      <span>Remaining</span>
+                      <span className={budget.remaining >= 0 ? 'positive' : 'negative'}>
+                        {formatCurrency(budget.remaining)}
+                      </span>
+                    </div>
+                    <div className="footer-dates">
+                      <span>{new Date(budget.start_date).toLocaleDateString('en-IN')}</span>
+                      <span>to</span>
+                      <span>{new Date(budget.end_date).toLocaleDateString('en-IN')}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Budget Form Modal - Simple for now */}
       {showForm && (
-        <BudgetForm
-          budget={editingBudget}
-          onClose={handleFormClose}
-        />
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Create Budget</h2>
+            <p>Budget form coming soon...</p>
+            <button onClick={() => setShowForm(false)} className="btn-primary">
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
