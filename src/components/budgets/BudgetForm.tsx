@@ -27,7 +27,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
   const loadCategories = async () => {
     try {
       const data = await categoryService.getCategories();
-      setCategories(data.filter(c => c.category_type === 'debit'));
+      setCategories(data);
     } catch (err) {
       console.error('Error loading categories:', err);
     }
