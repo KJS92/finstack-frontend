@@ -187,4 +187,142 @@
   color: white;
   white-space: nowrap;
 }
+/* View Toggle Buttons */
+.view-toggle {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 0 20px;
+}
+
+.view-toggle-btn {
+  padding: 10px 20px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.view-toggle-btn:hover {
+  border-color: #4f46e5;
+  background: #f9fafb;
+}
+
+.view-toggle-btn.active {
+  background: #4f46e5;
+  color: white;
+  border-color: #4f46e5;
+}
+
+/* Grouped View */
+.grouped-view {
+  padding: 0 20px;
+}
+
+.category-group {
+  margin-bottom: 30px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  padding: 20px 25px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.category-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.transaction-count {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6b7280;
+  margin-left: 8px;
+}
+
+.category-total {
+  font-size: 20px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: white;
+}
+
+.category-total.debit {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+.category-total.credit {
+  color: #059669;
+  background: #d1fae5;
+}
+
+/* Grouped View Table Styling */
+.category-group .transactions-table {
+  margin: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.category-group .transactions-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.category-group .transactions-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.category-group .transactions-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .view-toggle {
+    padding: 0 10px;
+  }
+  
+  .view-toggle-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .category-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 15px;
+  }
+  
+  .category-header h3 {
+    font-size: 16px;
+  }
+  
+  .category-total {
+    font-size: 18px;
+    align-self: flex-end;
+  }
+  
+  .grouped-view {
+    padding: 0 10px;
+  }
+}
 
