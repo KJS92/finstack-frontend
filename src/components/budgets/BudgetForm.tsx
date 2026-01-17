@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 import { budgetService, Budget, BudgetWithSpending } from '../../services/budgetService';
 import { categoryService, Category } from '../../services/categoryService';
+import './BudgetForm.css';
 
 interface BudgetFormProps {
   budget: BudgetWithSpending | null;
@@ -27,6 +27,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
   const loadCategories = async () => {
     try {
       const data = await categoryService.getCategories();
+      console.log('Categories loaded:', data); // Debug
       setCategories(data);
     } catch (err) {
       console.error('Error loading categories:', err);
@@ -37,6 +38,9 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    console.log('=== BUDGET FORM SUBMIT ===');
+    console.log('Form data:', formData);
 
     try {
       if (!formData.category_id) {
@@ -51,15 +55,23 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
         throw new Error('End date must be after start date');
       }
 
+      console.log('Validation passed, saving budget...');
+
       if (budget) {
+        console.log('Updating budget:', budget.id);
         await budgetService.updateBudget(budget.id, formData);
       } else {
-        await budgetService.createBudget(formData as any);
+        console.log('Creating new budget');
+        const result = await budgetService.createBudget(formData as any);
+        console.log('Budget created successfully:', result);
       }
 
+      alert('Budget saved successfully!');
       onClose();
     } catch (err: any) {
+      console.error('Budget save error:', err);
       setError(err.message || 'Failed to save budget');
+      alert('Error: ' + (err.message || 'Failed to save budget'));
     } finally {
       setLoading(false);
     }
@@ -88,38 +100,28 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+    <div className="budget-form-overlay" onClick={onClose}>
+      <div className="budget-form-container" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {budget ? 'Edit Budget' : 'Create Budget'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
-          >
-            <X size={24} />
-          </button>
+        <div className="budget-form-header">
+          <h2>{budget ? 'Edit Budget' : 'Create Budget'}</h2>
+          <button onClick={onClose} className="close-btn">×</button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="budget-form">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="error-message">
               {error}
             </div>
           )}
 
           {/* Category */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category *
-            </label>
+          <div className="form-group">
+            <label>Category *</label>
             <select
               value={formData.category_id}
               onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
               <option value="">Select a category</option>
@@ -132,31 +134,25 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
           </div>
 
           {/* Amount */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Budget Amount (₹) *
-            </label>
+          <div className="form-group">
+            <label>Budget Amount (₹) *</label>
             <input
               type="number"
               value={formData.amount}
               onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="5000"
               min="0"
-              step="0.01"
+              step="1"
               required
             />
           </div>
 
           {/* Period */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Period *
-            </label>
+          <div className="form-group">
+            <label>Period *</label>
             <select
               value={formData.period}
               onChange={(e) => handlePeriodChange(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
               <option value="monthly">Monthly</option>
@@ -167,47 +163,33 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
           </div>
 
           {/* Date Range */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date *
-              </label>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Start Date *</label>
               <input
                 type="date"
                 value={formData.start_date}
                 onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date *
-              </label>
+            <div className="form-group">
+              <label>End Date *</label>
               <input
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-            >
+          <div className="form-actions">
+            <button type="button" onClick={onClose} className="btn-cancel">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading} className="btn-submit">
               {loading ? 'Saving...' : budget ? 'Update' : 'Create'}
             </button>
           </div>
