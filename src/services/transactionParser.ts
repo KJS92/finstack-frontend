@@ -107,7 +107,15 @@ if (result.errors.length > 0) {
     
     // Find balance field
     const balanceStr = row.balance || row['balance"'] || row['closing balance'] || row['available balance'] || row.bal || null;
-    const balance = balanceStr ? this.parseAmount(balanceStr) : null;
+    // 🔍 DEBUG balance parsing
+if (rowNumber <= 3) {
+  console.log(`Row ${rowNumber} balance debug:`, {
+    rawBalance: row.balance,
+    balanceStr,
+    parsedBalance: balanceStr ? this.parseAmount(balanceStr) : null
+  });
+}
+   const balance = balanceStr ? this.parseAmount(balanceStr) : null;
 
     const debitAmount = this.parseAmount(debitStr);
     const creditAmount = this.parseAmount(creditStr);
