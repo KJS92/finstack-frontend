@@ -54,7 +54,7 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onEdit, onDelete }) => 
         <div className="flex justify-between text-sm mb-2">
           <span className="text-gray-600">Spent</span>
           <span className={`font-semibold ${isOverBudget ? 'text-red-600' : 'text-gray-900'}`}>
-            ₹{budget.spent.toLocaleString()} / ₹{budget.amount.toLocaleString()}
+            ₹{budget.spent.toLocaleString('en-IN')} / ₹{budget.amount.toLocaleString('en-IN')}
           </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-3">
@@ -68,7 +68,7 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onEdit, onDelete }) => 
           {isOverBudget && (
             <span className="flex items-center gap-1 text-xs text-red-600 font-medium">
               <AlertCircle size={14} />
-              Over budget by ₹{(budget.spent - budget.amount).toLocaleString()}
+              Over by ₹{(budget.spent - budget.amount).toLocaleString('en-IN')}
             </span>
           )}
           {isWarning && (
@@ -85,12 +85,12 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onEdit, onDelete }) => 
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Remaining</span>
           <span className={`font-semibold ${budget.remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            ₹{budget.remaining.toLocaleString()}
+            ₹{budget.remaining.toLocaleString('en-IN')}
           </span>
         </div>
         <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>{new Date(budget.start_date).toLocaleDateString()}</span>
-          <span>to {new Date(budget.end_date).toLocaleDateString()}</span>
+          <span>{new Date(budget.start_date).toLocaleDateString('en-IN')}</span>
+          <span>to {new Date(budget.end_date).toLocaleDateString('en-IN')}</span>
         </div>
       </div>
     </div>
@@ -98,3 +98,4 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onEdit, onDelete }) => 
 };
 
 export default BudgetCard;
+
