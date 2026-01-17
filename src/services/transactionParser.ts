@@ -27,8 +27,6 @@ console.log('Fields found:', result.meta.fields);
 console.log('Number of rows:', result.data.length);
 console.log('First row keys:', result.data[0] ? Object.keys(result.data[0]) : 'No data');
 console.log('First row values:', result.data[0]);
-console.log('All keys:', Object.keys(row));
-console.log('Raw row object:', row);  // See all fields
 console.log('========================');
 
 if (result.errors.length > 0) {
@@ -80,6 +78,7 @@ if (result.errors.length > 0) {
     if (rowNumber === 1) {
       console.log('=== ROW 1 DEBUG ===');
       console.log('All keys:', Object.keys(row));
+      console.log('Raw row object:', row);  // See all fields
       console.log('Date:', row.date);
       console.log('Description:', row.description);
       console.log('Transaction Details:', row['transaction details']);
@@ -123,9 +122,9 @@ if (result.errors.length > 0) {
       transactionType = 'credit';
       amount = creditAmount;
     } else {
-  // Check if this is an opening balance row (check actual field value)
-  const txnDetails = row['transaction details'] || description || '';
-  const balanceValue = balance || this.parseAmount(row.balance || '0');
+  // Check if this is an opening balance row
+  const txnDetails = row['transaction details'] || '';
+  const balanceValue = this.parseAmount(row.balance || '0');
   
   if (txnDetails.toLowerCase().includes('opening') && balanceValue > 0) {
     transactionType = 'credit';
@@ -135,6 +134,7 @@ if (result.errors.length > 0) {
     console.log(`Row ${rowNumber}: No debit or credit amount found`);
     return null;
   }
+}
 }
 
     return {
