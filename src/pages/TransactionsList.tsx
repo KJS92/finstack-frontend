@@ -488,8 +488,8 @@ const TransactionsList: React.FC = () => {
               </button>
             )}
           </div>
-        ) 
-          {viewMode === 'list' ? (
+        ) : (
+          viewMode === 'list' ? (
   <div className="table-wrapper">
     <table className="transactions-table">
       {/* Keep your existing table code exactly as is */}
