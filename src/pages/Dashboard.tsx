@@ -93,25 +93,28 @@ useEffect(() => {
           <p className="user-email">{userEmail}</p>
         </div>
         <div className="header-actions">
-          <button onClick={() => navigate('/add-transaction')} className="btn-primary">
-            Add Transaction
-          </button>
-          <button onClick={() => navigate('/transactions')} className="btn-primary">
-            Upload Transactions
-          </button>
-          <button onClick={() => navigate('/categories')} className="btn-secondary">
-            Categories
-          </button>
-          <button onClick={() => navigate('/profile')} className="btn-secondary">
-            Profile
-          </button>
-          <button onClick={() => navigate('/accounts')} className="btn-secondary">
-            Manage Accounts
-          </button>
-          <button onClick={handleLogout} className="btn-logout">
-            Logout
-          </button>
-        </div>
+        <button onClick={() => navigate('/add-transaction')} className="btn-primary">
+          Add Transaction
+        </button>
+        <button onClick={() => navigate('/transactions')} className="btn-primary">
+          Upload Transactions
+        </button>
+        <button onClick={() => navigate('/budgets')} className="btn-secondary">
+          Budgets
+        </button>
+        <button onClick={() => navigate('/categories')} className="btn-secondary">
+          Categories
+        </button>
+        <button onClick={() => navigate('/profile')} className="btn-secondary">
+          Profile
+        </button>
+        <button onClick={() => navigate('/accounts')} className="btn-secondary">
+          Manage Accounts
+        </button>
+        <button onClick={handleLogout} className="btn-logout">
+          Logout
+        </button>
+      </div>
       </header>
 
       <div className="dashboard-summary">
