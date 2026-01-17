@@ -4,11 +4,11 @@ export interface Category {
   id: string;
   user_id: string;
   name: string;
-  icon?: string;
-  color: string;
-  is_default: boolean;
-  created_at: string;
-  updated_at: string;
+  icon: string | null;
+  color: string | null;
+  is_default: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface CreateCategoryDto {
