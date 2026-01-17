@@ -27,6 +27,7 @@ console.log('Fields found:', result.meta.fields);
 console.log('Number of rows:', result.data.length);
 console.log('First row keys:', result.data[0] ? Object.keys(result.data[0]) : 'No data');
 console.log('First row values:', result.data[0]);
+console.log('All keys:', Object.keys(row));
 console.log('Raw row object:', row);  // See all fields
 console.log('========================');
 
