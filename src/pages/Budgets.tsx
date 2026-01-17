@@ -82,25 +82,25 @@ const Budgets: React.FC = () => {
         </button>
       </div>
 
-      {/* Summary Cards */}
+           {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Budget</p>
-              <p className="text-2xl font-bold text-gray-900">₹{summary.totalBudget.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">₹{summary.totalBudget.toLocaleString('en-IN')}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
               <DollarSign className="text-blue-600" size={24} />
             </div>
           </div>
         </div>
-
+      
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Spent</p>
-              <p className="text-2xl font-bold text-red-600">₹{summary.totalSpent.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-red-600">₹{summary.totalSpent.toLocaleString('en-IN')}</p>
               <p className="text-sm text-gray-500 mt-1">{overallPercentage.toFixed(1)}% of budget</p>
             </div>
             <div className="p-3 bg-red-100 rounded-full">
@@ -108,12 +108,12 @@ const Budgets: React.FC = () => {
             </div>
           </div>
         </div>
-
+      
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Remaining</p>
-              <p className="text-2xl font-bold text-green-600">₹{summary.totalRemaining.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-green-600">₹{summary.totalRemaining.toLocaleString('en-IN')}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <TrendingUp className="text-green-600" size={24} />
