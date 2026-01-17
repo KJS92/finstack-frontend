@@ -227,7 +227,7 @@ const TransactionsList: React.FC = () => {
     }
   };
 
-    const handleBulkCategorize = async () => {
+  const handleBulkCategorize = async () => {
     if (!window.confirm('This will auto-categorize all uncategorized transactions based on keywords. Continue?')) {
       return;
     }
@@ -235,7 +235,6 @@ const TransactionsList: React.FC = () => {
     setBulkCategorizing(true);
     
     try {
-      // Get uncategorized transactions
       const uncategorized = transactions.filter(t => !t.category_id);
       
       if (uncategorized.length === 0) {
@@ -313,27 +312,27 @@ const TransactionsList: React.FC = () => {
         : 'Custom Range';
       default: return 'All Time';
     }
+  };
 
-      };
-      const groupByCategory = () => {
-      const grouped: { [key: string]: Transaction[] } = {};
-      
-      filteredTransactions.forEach(txn => {
-        const categoryId = txn.category_id || 'uncategorized';
-        if (!grouped[categoryId]) {
-          grouped[categoryId] = [];
-        }
-        grouped[categoryId].push(txn);
-      });
-      
-      return grouped;
-    };
+  const groupByCategory = () => {
+    const grouped: { [key: string]: Transaction[] } = {};
     
-    const calculateCategoryTotal = (transactions: Transaction[]) => {
-      return transactions.reduce((sum, txn) => {
-        return sum + (txn.transaction_type === 'debit' ? txn.amount : -txn.amount);
-      }, 0);
-    };
+    filteredTransactions.forEach(txn => {
+      const categoryId = txn.category_id || 'uncategorized';
+      if (!grouped[categoryId]) {
+        grouped[categoryId] = [];
+      }
+      grouped[categoryId].push(txn);
+    });
+    
+    return grouped;
+  };
+  
+  const calculateCategoryTotal = (transactions: Transaction[]) => {
+    return transactions.reduce((sum, txn) => {
+      return sum + (txn.transaction_type === 'debit' ? txn.amount : -txn.amount);
+    }, 0);
+  };
 
   if (loading) {
     return <div className="transactions-list-container"><p>Loading transactions...</p></div>;
@@ -347,7 +346,7 @@ const TransactionsList: React.FC = () => {
           <button onClick={() => navigate('/transactions')} className="btn-primary">
             Upload New
           </button>
-           <button 
+          <button 
             onClick={handleBulkCategorize} 
             className="btn-secondary" 
             disabled={bulkCategorizing}
@@ -451,7 +450,7 @@ const TransactionsList: React.FC = () => {
           </>
         )}
       </div>
-      {/* 👇 ADD THIS VIEW TOGGLE */}
+
       <div className="view-toggle">
         <button 
           className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
@@ -488,97 +487,130 @@ const TransactionsList: React.FC = () => {
               </button>
             )}
           </div>
-        ) :
-          viewMode === 'list' ? (
-  <div className="table-wrapper">
-    <table className="transactions-table">
-      {/* Keep your existing table code exactly as is */}
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Account</th>
-          <th>Description</th>
-          <th>Category</th>
-          <th>Type</th>
-          <th>Amount</th>
-          <th>Balance</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {filteredTransactions.map((transaction) => {
-          const categoryInfo = getCategoryName(transaction.category_id);
-          return (
-            <tr key={transaction.id}>
-              {/* Keep all your existing table row code */}
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-) : (
-  <div className="grouped-view">
-    {Object.entries(groupByCategory()).map(([categoryId, txns]) => {
-      const categoryInfo = getCategoryName(categoryId === 'uncategorized' ? null : categoryId);
-      const total = calculateCategoryTotal(txns);
-      
-      return (
-        <div key={categoryId} className="category-group">
-          <div className="category-header">
-            <h3>
-              <span style={{ fontSize: '24px' }}>{categoryInfo.icon}</span>
-              {' '}{categoryInfo.name}
-              <span className="transaction-count">({txns.length} transactions)</span>
-            </h3>
-            <span className={`category-total ${total < 0 ? 'debit' : 'credit'}`}>
-              {formatCurrency(Math.abs(total))}
-            </span>
-          </div>
-          
-          <table className="transactions-table">
-            <tbody>
-              {txns.map((transaction) => (
-                <tr key={transaction.id}>
-                  <td>{formatDate(transaction.transaction_date)}</td>
-                  <td>{getAccountName(transaction.account_id)}</td>
-                  <td className="description">{transaction.description}</td>
-                  <td>
-                    <span className={`type-badge ${transaction.transaction_type}`}>
-                      {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
-                    </span>
-                  </td>
-                  <td className={`amount ${transaction.transaction_type}`}>
-                    {formatCurrency(transaction.amount)}
-                  </td>
-                  <td>
-                    {transaction.balance ? formatCurrency(transaction.balance) : '-'}
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      <button 
-                        onClick={() => handleEdit(transaction)}
-                        className="btn-edit-small"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(transaction.id)}
-                        className="btn-delete-small"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+        ) : viewMode === 'list' ? (
+          <div className="table-wrapper">
+            <table className="transactions-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Account</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Balance</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    })}
-  </div>
-)}
+              </thead>
+              <tbody>
+                {filteredTransactions.map((transaction) => {
+                  const categoryInfo = getCategoryName(transaction.category_id);
+                  return (
+                    <tr key={transaction.id}>
+                      <td>{formatDate(transaction.transaction_date)}</td>
+                      <td>{getAccountName(transaction.account_id)}</td>
+                      <td className="description">{transaction.description}</td>
+                      <td>
+                        <span className="category-badge" style={{ backgroundColor: categoryInfo.color }}>
+                          {categoryInfo.icon} {categoryInfo.name}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`type-badge ${transaction.transaction_type}`}>
+                          {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
+                        </span>
+                      </td>
+                      <td className={`amount ${transaction.transaction_type}`}>
+                        {formatCurrency(transaction.amount)}
+                      </td>
+                      <td>
+                        {transaction.balance ? formatCurrency(transaction.balance) : '-'}
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          <button 
+                            onClick={() => handleEdit(transaction)}
+                            className="btn-edit-small"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(transaction.id)}
+                            className="btn-delete-small"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grouped-view">
+            {Object.entries(groupByCategory()).map(([categoryId, txns]) => {
+              const categoryInfo = getCategoryName(categoryId === 'uncategorized' ? null : categoryId);
+              const total = calculateCategoryTotal(txns);
+              
+              return (
+                <div key={categoryId} className="category-group">
+                  <div className="category-header">
+                    <h3>
+                      <span style={{ fontSize: '24px' }}>{categoryInfo.icon}</span>
+                      {' '}{categoryInfo.name}
+                      <span className="transaction-count"> ({txns.length} transactions)</span>
+                    </h3>
+                    <span className={`category-total ${total > 0 ? 'debit' : 'credit'}`}>
+                      {formatCurrency(Math.abs(total))}
+                    </span>
+                  </div>
+                  
+                  <table className="transactions-table">
+                    <tbody>
+                      {txns.map((transaction) => (
+                        <tr key={transaction.id}>
+                          <td>{formatDate(transaction.transaction_date)}</td>
+                          <td>{getAccountName(transaction.account_id)}</td>
+                          <td className="description">{transaction.description}</td>
+                          <td>
+                            <span className={`type-badge ${transaction.transaction_type}`}>
+                              {transaction.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}
+                            </span>
+                          </td>
+                          <td className={`amount ${transaction.transaction_type}`}>
+                            {formatCurrency(transaction.amount)}
+                          </td>
+                          <td>
+                            {transaction.balance ? formatCurrency(transaction.balance) : '-'}
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button 
+                                onClick={() => handleEdit(transaction)}
+                                className="btn-edit-small"
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                onClick={() => handleDelete(transaction.id)}
+                                className="btn-delete-small"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
       
       {editingTransaction && (
         <EditTransactionModal
@@ -600,3 +632,4 @@ const TransactionsList: React.FC = () => {
 };
 
 export default TransactionsList;
+
