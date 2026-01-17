@@ -135,7 +135,6 @@ if (result.errors.length > 0) {
     return null;
   }
 }
-}
 
     return {
       transaction_date: date,
