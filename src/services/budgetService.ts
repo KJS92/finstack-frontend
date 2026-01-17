@@ -37,70 +37,81 @@ class BudgetService {
   }
 
   async getBudgetsWithSpending(startDate?: string, endDate?: string): Promise<BudgetWithSpending[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
 
-    // Get current month if no dates provided
-    const now = new Date();
-    const monthStart = startDate || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const monthEnd = endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const now = new Date();
+  const monthStart = startDate || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const monthEnd = endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-    // Get budgets with category info
-    const { data: budgets, error: budgetError } = await supabase
-      .from('budgets')
-      .select(`
-        *,
-        categories (
-          name,
-          icon,
-          color
-        )
-      `)
-      .eq('user_id', user.id)
-      .gte('end_date', monthStart)  // Budget is still active
-      .lte('start_date', monthEnd);  // Budget has started
+  console.log('Getting budgets for user:', user.id);
 
-    if (budgetError) throw budgetError;
+  // Get ALL budgets for this user (simplified query)
+  const { data: budgets, error: budgetError } = await supabase
+    .from('budgets')
+    .select(`
+      *,
+      categories (
+        name,
+        icon,
+        color
+      )
+    `)
+    .eq('user_id', user.id);
 
-    // Get spending for each category
-    const budgetsWithSpending: BudgetWithSpending[] = await Promise.all(
-      (budgets || []).map(async (budget: any) => {
-        if (!budget.category_id) {
-          return {
-            ...budget,
-            spent: 0,
-            remaining: budget.amount,
-            percentage: 0
-          };
-        }
+  console.log('Budgets loaded:', budgets);
+  console.log('Error:', budgetError);
 
-        const { data: transactions } = await supabase
-          .from('transactions')
-          .select('amount')
-          .eq('user_id', user.id)
-          .eq('category_id', budget.category_id)
-          .eq('transaction_type', 'debit')
-          .gte('transaction_date', monthStart)
-          .lte('transaction_date', monthEnd);
+  if (budgetError) throw budgetError;
 
-        const spent = transactions?.reduce((sum, t) => sum + t.amount, 0) || 0;
-        const remaining = budget.amount - spent;
-        const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
+  if (!budgets || budgets.length === 0) {
+    console.log('No budgets found');
+    return [];
+  }
 
+  // Get spending for each category
+  const budgetsWithSpending: BudgetWithSpending[] = await Promise.all(
+    budgets.map(async (budget: any) => {
+      if (!budget.category_id) {
         return {
           ...budget,
           category_name: budget.categories?.name,
           category_icon: budget.categories?.icon,
           category_color: budget.categories?.color,
-          spent,
-          remaining,
-          percentage: Math.min(percentage, 100)
+          spent: 0,
+          remaining: budget.amount,
+          percentage: 0
         };
-      })
-    );
+      }
 
-    return budgetsWithSpending;
-  }
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('category_id', budget.category_id)
+        .eq('transaction_type', 'debit')
+        .gte('transaction_date', monthStart)
+        .lte('transaction_date', monthEnd);
+
+      const spent = transactions?.reduce((sum, t) => sum + t.amount, 0) || 0;
+      const remaining = budget.amount - spent;
+      const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
+
+      return {
+        ...budget,
+        category_name: budget.categories?.name,
+        category_icon: budget.categories?.icon,
+        category_color: budget.categories?.color,
+        spent,
+        remaining,
+        percentage: Math.min(percentage, 100)
+      };
+    })
+  );
+
+  console.log('Budgets with spending:', budgetsWithSpending);
+  return budgetsWithSpending;
+}
 
   async createBudget(budget: Omit<Budget, 'id' | 'user_id' | 'created_at'>): Promise<Budget> {
     const { data: { user } } = await supabase.auth.getUser();
