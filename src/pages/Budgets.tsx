@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { budgetService, BudgetWithSpending } from '../services/budgetService';
 import { supabase } from '../config/supabase';
+import BudgetForm from '../components/budgets/BudgetForm';
 import './Budgets.css';
 
 const Budgets: React.FC = () => {
@@ -207,18 +208,8 @@ const Budgets: React.FC = () => {
         )}
       </div>
 
-      {/* Budget Form Modal - Simple for now */}
-      {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Budget</h2>
-            <p>Budget form coming soon...</p>
-            <button onClick={() => setShowForm(false)} className="btn-primary">
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Budget Form Modal */}
+{showForm && <BudgetForm budget={null} onClose={() => { setShowForm(false); loadBudgets(); }} />}
     </div>
   );
 };
