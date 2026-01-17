@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { budgetService, BudgetWithSpending } from '../services/budgetService';
 import BudgetCard from '../components/budgets/BudgetCard';
 import BudgetForm from '../components/budgets/BudgetForm';
+import './Budgets.css';
 import { Plus, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
 const Budgets: React.FC = () => {
