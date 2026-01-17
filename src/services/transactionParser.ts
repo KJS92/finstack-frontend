@@ -120,14 +120,20 @@ if (result.errors.length > 0) {
     } else if (creditAmount > 0) {
       transactionType = 'credit';
       amount = creditAmount;
-    } else if (balance !== null && description.toLowerCase().includes('opening')) {
-      // ✅ Handle opening balance (has balance but no debit/credit)
-      transactionType = 'credit';
-      amount = balance;
     } else {
-      console.log(`Row ${rowNumber}: No debit or credit amount found`);
-      return null;
-    }
+  // Check if this is an opening balance row (check actual field value)
+  const txnDetails = row['transaction details'] || description || '';
+  const balanceValue = balance || this.parseAmount(row.balance || '0');
+  
+  if (txnDetails.toLowerCase().includes('opening') && balanceValue > 0) {
+    transactionType = 'credit';
+    amount = balanceValue;
+    console.log(`✅ Row ${rowNumber}: Opening balance detected: ${balanceValue}`);
+  } else {
+    console.log(`Row ${rowNumber}: No debit or credit amount found`);
+    return null;
+  }
+}
 
     return {
       transaction_date: date,
