@@ -23,6 +23,19 @@ export interface UpdateCategoryDto {
   color?: string;
 }
 
+// ADD THIS HELPER FUNCTION HERE (after interface, before class)
+export const getCategoryDisplay = (category: Category | null | undefined) => {
+  if (!category) {
+    return { name: 'Uncategorized', icon: '📌', color: '#6B7280' };
+  }
+  
+  return {
+    name: category.name,
+    icon: category.icon || '📌',
+    color: category.color || '#6B7280'
+  };
+};
+
 class CategoryService {
   // Get all categories for current user
   async getCategories(): Promise<Category[]> {
