@@ -49,7 +49,7 @@ const Categories: React.FC = () => {
       setFormData({
         name: category.name,
         icon: category.icon || '📌',
-        color: category.color
+        color: category.color || '#3B82F6'
       });
     } else {
       setEditingCategory(null);
