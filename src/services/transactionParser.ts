@@ -16,7 +16,7 @@ class TransactionParser {
   skipEmptyLines: true,
   delimiter: ',',
  // delimitersToGuess: [',', ';', '\t', '|'],
-  transformHeader: (header: string) => header.trim().toLowerCase()
+  transformHeader: (header: string) => header.trim().toLowerCase().replace(/"/g, '')
 });
 
 // 🔍 NEW DEBUG LOGS - Add these
@@ -106,7 +106,7 @@ if (result.errors.length > 0) {
     const creditStr = row.credit || row.deposit || row['credit amount'] || '0';
     
     // Find balance field
-    const balanceStr = row.balance || row['closing balance'] || row['available balance'] || row.bal || null;
+    const balanceStr = row.balance || row['balance"'] || row['closing balance'] || row['available balance'] || row.bal || null;
     const balance = balanceStr ? this.parseAmount(balanceStr) : null;
 
     const debitAmount = this.parseAmount(debitStr);
