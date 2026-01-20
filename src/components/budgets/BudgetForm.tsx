@@ -8,16 +8,17 @@ interface BudgetFormProps {
   onClose: () => void;
 }
 
+const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
     category_id: budget?.category_id || '',
     amount: budget?.amount || 0,
     period: budget?.period || 'monthly',
     start_date: budget?.start_date || new Date().toISOString().split('T')[0],
-    end_date: budget?.end_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],   // ✅ Added comma
+    end_date: budget?.end_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
     rollover_enabled: budget?.rollover_enabled || false,
     auto_renew: budget?.auto_renew || false
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -28,7 +29,7 @@ interface BudgetFormProps {
   const loadCategories = async () => {
     try {
       const data = await categoryService.getCategories();
-      console.log('Categories loaded:', data); // Debug
+      console.log('Categories loaded:', data);
       setCategories(data);
     } catch (err) {
       console.error('Error loading categories:', err);
@@ -78,34 +79,31 @@ interface BudgetFormProps {
     }
   };
 
-      const handlePeriodChange = (period: string) => {
-      const now = new Date();
-      let start_date: string;
-      let end_date: string;
-    
-      if (period === 'monthly') {
-        start_date = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        end_date = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      } else if (period === 'yearly') {
-        start_date = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-        end_date = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
-      } else if (period === 'quarterly') {
-        const quarter = Math.floor(now.getMonth() / 3);
-        start_date = new Date(now.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
-        end_date = new Date(now.getFullYear(), (quarter + 1) * 3, 0).toISOString().split('T')[0];
-      } else if (period === 'custom') {
-        // For custom, keep existing dates or use current month as default
-        start_date = formData.start_date || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        end_date = formData.end_date || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      } else {
-        // Fallback
-        start_date = formData.start_date;
-        end_date = formData.end_date;
-      }
-    
-      setFormData(prev => ({ ...prev, period, start_date, end_date }));
-    };
+  const handlePeriodChange = (period: string) => {
+    const now = new Date();
+    let start_date: string;
+    let end_date: string;
 
+    if (period === 'monthly') {
+      start_date = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      end_date = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    } else if (period === 'yearly') {
+      start_date = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+      end_date = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+    } else if (period === 'quarterly') {
+      const quarter = Math.floor(now.getMonth() / 3);
+      start_date = new Date(now.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
+      end_date = new Date(now.getFullYear(), (quarter + 1) * 3, 0).toISOString().split('T')[0];
+    } else if (period === 'custom') {
+      start_date = formData.start_date || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      end_date = formData.end_date || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    } else {
+      start_date = formData.start_date;
+      end_date = formData.end_date;
+    }
+
+    setFormData(prev => ({ ...prev, period, start_date, end_date }));
+  };
 
   return (
     <div className="budget-form-overlay" onClick={onClose}>
@@ -169,34 +167,7 @@ interface BudgetFormProps {
               <option value="custom">Custom</option>
             </select>
           </div>
-          
-          {/* Roll-over Option */}
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={formData.rollover_enabled}
-                onChange={(e) => setFormData(prev => ({ ...prev, rollover_enabled: e.target.checked }))}
-              />
-              <span>Roll over unused amount to next period</span>
-            </label>
-            <p className="help-text">Unspent amount will be added to the next budget period</p>
-          </div>
-          
-          {/* Auto-renew Option */}
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={formData.auto_renew}
-                onChange={(e) => setFormData(prev => ({ ...prev, auto_renew: e.target.checked }))}
-              />
-              <span>Auto-renew when period ends</span>
-            </label>
-            <p className="help-text">Automatically create a new budget for the next period</p>
-</div>
 
-          
           {/* Date Range */}
           <div className="form-row">
             <div className="form-group">
@@ -217,6 +188,32 @@ interface BudgetFormProps {
                 required
               />
             </div>
+          </div>
+
+          {/* Roll-over Option */}
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={formData.rollover_enabled}
+                onChange={(e) => setFormData(prev => ({ ...prev, rollover_enabled: e.target.checked }))}
+              />
+              <span>Roll over unused amount to next period</span>
+            </label>
+            <p className="help-text">Unspent amount will be added to the next budget period</p>
+          </div>
+
+          {/* Auto-renew Option */}
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={formData.auto_renew}
+                onChange={(e) => setFormData(prev => ({ ...prev, auto_renew: e.target.checked }))}
+              />
+              <span>Auto-renew when period ends</span>
+            </label>
+            <p className="help-text">Automatically create a new budget for the next period</p>
           </div>
 
           {/* Buttons */}
