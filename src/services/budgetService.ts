@@ -90,8 +90,8 @@ class BudgetService {
         .eq('user_id', user.id)
         .eq('category_id', budget.category_id)
         .eq('transaction_type', 'debit')
-        .gte('transaction_date', monthStart)
-        .lte('transaction_date', monthEnd);
+        .gte('transaction_date', budget.start_date)
+        .lte('transaction_date', budget.end_date);
 
       const spent = transactions?.reduce((sum, t) => sum + t.amount, 0) || 0;
       const remaining = budget.amount - spent;
