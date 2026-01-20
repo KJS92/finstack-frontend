@@ -227,11 +227,12 @@ const Budgets: React.FC = () => {
                           )}
                         </div>
                         
-                        {budget.rollover_amount > 0 && (
+                        {(budget.rollover_amount ?? 0) > 0 && (
                           <p className="rollover-amount">
-                            +{formatCurrency(budget.rollover_amount)} from previous period
+                            +{formatCurrency(budget.rollover_amount!)} from previous period
                           </p>
                         )}
+
                       </div>
                     </div>
                     <div className="budget-actions">
