@@ -321,3 +321,42 @@ body.modal-open {
   background: #e5e7eb;
 }
 
+.budget-features {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.feature-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feature-badge.rollover {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.feature-badge.auto-renew {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.feature-badge.expired {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.rollover-amount {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 600;
+  margin: 4px 0 0 0;
+  font-style: italic;
+}
