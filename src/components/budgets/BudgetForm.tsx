@@ -16,6 +16,8 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
     period: budget?.period || 'monthly',
     start_date: budget?.start_date || new Date().toISOString().split('T')[0],
     end_date: budget?.end_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
+    rollover_enabled: budget?.rollover_enabled || false,   // NEW
+    auto_renew: budget?.auto_renew || false
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -168,7 +170,34 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
               <option value="custom">Custom</option>
             </select>
           </div>
+          
+          {/* Roll-over Option */}
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={formData.rollover_enabled}
+                onChange={(e) => setFormData(prev => ({ ...prev, rollover_enabled: e.target.checked }))}
+              />
+              <span>Roll over unused amount to next period</span>
+            </label>
+            <p className="help-text">Unspent amount will be added to the next budget period</p>
+          </div>
+          
+          {/* Auto-renew Option */}
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={formData.auto_renew}
+                onChange={(e) => setFormData(prev => ({ ...prev, auto_renew: e.target.checked }))}
+              />
+              <span>Auto-renew when period ends</span>
+            </label>
+            <p className="help-text">Automatically create a new budget for the next period</p>
+</div>
 
+          
           {/* Date Range */}
           <div className="form-row">
             <div className="form-group">
