@@ -8,17 +8,16 @@ interface BudgetFormProps {
   onClose: () => void;
 }
 
-const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
-  const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
     category_id: budget?.category_id || '',
     amount: budget?.amount || 0,
     period: budget?.period || 'monthly',
     start_date: budget?.start_date || new Date().toISOString().split('T')[0],
-    end_date: budget?.end_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
-    rollover_enabled: budget?.rollover_enabled || false,   // NEW
+    end_date: budget?.end_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],   // ✅ Added comma
+    rollover_enabled: budget?.rollover_enabled || false,
     auto_renew: budget?.auto_renew || false
-  };
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
