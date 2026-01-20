@@ -18,7 +18,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
     end_date: budget?.end_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
     rollover_enabled: budget?.rollover_enabled || false,   // NEW
     auto_renew: budget?.auto_renew || false
-  });
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
