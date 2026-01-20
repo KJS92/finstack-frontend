@@ -18,6 +18,13 @@ const Budgets: React.FC = () => {
     loadBudgets();
   }, []);
 
+  const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
+
+  const handleEdit = (budget: BudgetWithSpending) => {
+  setEditingBudget(budget);
+  setShowForm(true);
+};
+
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -154,17 +161,22 @@ const Budgets: React.FC = () => {
               return (
                 <div key={budget.id} className="budget-card">
                   <div className="budget-header">
-                    <div className="budget-title">
-                      <span className="budget-icon">{budget.category_icon || '📊'}</span>
-                      <div>
-                        <h4>{budget.category_name || 'General Budget'}</h4>
-                        <p className="budget-period">{budget.period || 'Monthly'}</p>
-                      </div>
+                  <div className="budget-title">
+                    <span className="budget-icon">{budget.category_icon || '📊'}</span>
+                    <div>
+                      <h4>{budget.category_name || 'General Budget'}</h4>
+                      <p className="budget-period">{budget.period || 'Monthly'}</p>
                     </div>
+                  </div>
+                  <div className="budget-actions">
+                    <button onClick={() => handleEdit(budget)} className="btn-edit">
+                      ✏️
+                    </button>
                     <button onClick={() => handleDelete(budget.id)} className="btn-delete">
                       🗑️
                     </button>
                   </div>
+                </div>
 
                   <div className="budget-progress">
                     <div className="progress-info">
@@ -209,7 +221,15 @@ const Budgets: React.FC = () => {
       </div>
 
       {/* Budget Form Modal */}
-{showForm && <BudgetForm budget={null} onClose={() => { setShowForm(false); loadBudgets(); }} />}
+{/* Budget Form Modal */}
+{showForm && <BudgetForm 
+budget={editingBudget} 
+  onClose={() => { 
+    setShowForm(false); 
+    setEditingBudget(null);
+    loadBudgets(); 
+  }} 
+/>}
     </div>
   );
 };
