@@ -12,6 +12,7 @@ const Budgets: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
 
   useEffect(() => {
     checkUser();
@@ -19,12 +20,10 @@ const Budgets: React.FC = () => {
     checkExpiredBudgets();
   }, []);
 
-  const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
-
   const handleEdit = (budget: BudgetWithSpending) => {
-  setEditingBudget(budget);
-  setShowForm(true);
-};
+    setEditingBudget(budget);
+    setShowForm(true);
+  };
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -36,17 +35,17 @@ const Budgets: React.FC = () => {
   };
 
   const handleRenew = async (budget: BudgetWithSpending) => {
-  if (window.confirm(`Renew budget for ${budget.category_name}? This will create a new budget for the next period.`)) {
-    try {
-      await budgetService.renewBudget(budget);
-      alert('Budget renewed successfully!');
-      loadBudgets();
-    } catch (error: any) {
-      console.error('Error renewing budget:', error);
-      alert('Error: ' + error.message);
+    if (window.confirm(`Renew budget for ${budget.category_name}? This will create a new budget for the next period.`)) {
+      try {
+        await budgetService.renewBudget(budget);
+        alert('Budget renewed successfully!');
+        loadBudgets();
+      } catch (error: any) {
+        console.error('Error renewing budget:', error);
+        alert('Error: ' + error.message);
+      }
     }
-  }
-};
+  };
 
   const handleReset = async (budget: BudgetWithSpending) => {
     if (window.confirm(`Reset budget for ${budget.category_name}? This will clear rollover amounts and start fresh.`)) {
@@ -58,6 +57,15 @@ const Budgets: React.FC = () => {
         console.error('Error resetting budget:', error);
         alert('Error: ' + error.message);
       }
+    }
+  };
+
+  const checkExpiredBudgets = async () => {
+    try {
+      await budgetService.checkAndRenewBudgets();
+      console.log('Checked for expired budgets');
+    } catch (error) {
+      console.error('Error checking expired budgets:', error);
     }
   };
 
@@ -151,6 +159,7 @@ const Budgets: React.FC = () => {
         <div className="summary-card">
           <h3>Total Budget</h3>
           <p className="amount">{formatCurrency(summary.totalBudget)}</p>
+          <p className="sub-info">{budgets.length} active budgets</p>
         </div>
         <div className="summary-card">
           <h3>Total Spent</h3>
@@ -160,6 +169,9 @@ const Budgets: React.FC = () => {
         <div className="summary-card">
           <h3>Remaining</h3>
           <p className="amount remaining">{formatCurrency(summary.totalRemaining)}</p>
+          <p className="sub-info">
+            {budgets.filter(b => b.rollover_enabled).length} with roll-over • {budgets.filter(b => b.auto_renew).length} auto-renew
+          </p>
         </div>
       </div>
 
@@ -181,105 +193,121 @@ const Budgets: React.FC = () => {
           </div>
         ) : (
           <div className="budgets-grid">
-            {{budgets.map((budget) => {
-            const isOverBudget = budget.spent > budget.amount;
-            const isWarning = budget.percentage >= 80 && !isOverBudget;
-            const isExpired = new Date(budget.end_date) < new Date();
-            const effectiveAmount = budget.amount + (budget.rollover_amount || 0);
+            {budgets.map((budget) => {
+              const isOverBudget = budget.spent > budget.amount;
+              const isWarning = budget.percentage >= 80 && !isOverBudget;
+              const isExpired = new Date(budget.end_date) < new Date();
+              const effectiveAmount = budget.amount + (budget.rollover_amount || 0);
+              
+              return (
+                <div key={budget.id} className={`budget-card ${isExpired ? 'expired' : ''}`}>
+                  <div className="budget-header">
+                    <div className="budget-title">
+                      <span className="budget-icon">{budget.category_icon || '📊'}</span>
+                      <div>
+                        <h4>{budget.category_name || 'General Budget'}</h4>
+                        <p className="budget-period">{budget.period || 'Monthly'}</p>
+                        
+                        {/* Feature Badges */}
+                        <div className="budget-features">
+                          {budget.rollover_enabled && (
+                            <span className="feature-badge rollover">
+                              🔄 Roll-over
+                            </span>
+                          )}
+                          {budget.auto_renew && (
+                            <span className="feature-badge auto-renew">
+                              ♻️ Auto-renew
+                            </span>
+                          )}
+                          {isExpired && (
+                            <span className="feature-badge expired">
+                              ⚠️ Expired
+                            </span>
+                          )}
+                        </div>
+                        
+                        {budget.rollover_amount > 0 && (
+                          <p className="rollover-amount">
+                            +{formatCurrency(budget.rollover_amount)} from previous period
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="budget-actions">
+                      <button onClick={() => handleEdit(budget)} className="btn-edit" title="Edit">
+                        ✏️
+                      </button>
+                      <button onClick={() => handleDelete(budget.id)} className="btn-delete" title="Delete">
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
             
-            return (
-              <div key={budget.id} className={`budget-card ${isExpired ? 'expired' : ''}`}>
-                <div className="budget-header">
-                  <div className="budget-title">
-                    <span className="budget-icon">{budget.category_icon || '📊'}</span>
-                    <div>
-                      <h4>{budget.category_name || 'General Budget'}</h4>
-                      <p className="budget-period">{budget.period || 'Monthly'}</p>
-                      {budget.rollover_amount > 0 && (
-                        <p className="rollover-tag">
-                          +₹{budget.rollover_amount.toLocaleString('en-IN')} rolled over
-                        </p>
+                  <div className="budget-progress">
+                    <div className="progress-info">
+                      <span>Spent</span>
+                      <span className={isOverBudget ? 'over-budget' : ''}>
+                        {formatCurrency(budget.spent)} / {formatCurrency(effectiveAmount)}
+                      </span>
+                    </div>
+                    <div className="progress-bar">
+                      <div 
+                        className={`progress-fill ${isOverBudget ? 'over' : isWarning ? 'warning' : 'safe'}`}
+                        style={{ width: `${Math.min(budget.percentage, 100)}%` }}
+                      />
+                    </div>
+                    <div className="progress-footer">
+                      <span>{budget.percentage.toFixed(1)}%</span>
+                      {isOverBudget && (
+                        <span className="alert">Over by {formatCurrency(budget.spent - effectiveAmount)}</span>
                       )}
+                      {isWarning && <span className="warning-text">Approaching limit</span>}
                     </div>
                   </div>
-                  <div className="budget-actions">
-                    {isExpired && budget.auto_renew && (
-                      <span className="auto-renew-badge">Auto-renew enabled</span>
-                    )}
-                    <button onClick={() => handleEdit(budget)} className="btn-edit" title="Edit">
-                      ✏️
-                    </button>
-                    <button onClick={() => handleDelete(budget.id)} className="btn-delete" title="Delete">
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-          
-                <div className="budget-progress">
-                  <div className="progress-info">
-                    <span>Spent</span>
-                    <span className={isOverBudget ? 'over-budget' : ''}>
-                      {formatCurrency(budget.spent)} / {formatCurrency(effectiveAmount)}
-                    </span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className={`progress-fill ${isOverBudget ? 'over' : isWarning ? 'warning' : 'safe'}`}
-                      style={{ width: `${Math.min(budget.percentage, 100)}%` }}
-                    />
-                  </div>
-                  <div className="progress-footer">
-                    <span>{budget.percentage.toFixed(1)}%</span>
-                    {isOverBudget && (
-                      <span className="alert">Over by {formatCurrency(budget.spent - effectiveAmount)}</span>
-                    )}
-                    {isWarning && <span className="warning-text">Approaching limit</span>}
-                  </div>
-                </div>
-          
-                <div className="budget-footer">
-                  <div className="footer-row">
-                    <span>Remaining</span>
-                    <span className={budget.remaining >= 0 ? 'positive' : 'negative'}>
-                      {formatCurrency(budget.remaining)}
-                    </span>
-                  </div>
-                  <div className="footer-dates">
-                    <span>{new Date(budget.start_date).toLocaleDateString('en-IN')}</span>
-                    <span>to</span>
-                    <span>{new Date(budget.end_date).toLocaleDateString('en-IN')}</span>
-                    {isExpired && <span className="expired-label">Expired</span>}
-                  </div>
-                  
-                  {/* Action buttons for expired budgets */}
-                  {isExpired && (
-                    <div className="budget-quick-actions">
-                      <button onClick={() => handleRenew(budget)} className="btn-renew">
-                        🔄 Renew for Next Period
-                      </button>
-                      <button onClick={() => handleReset(budget)} className="btn-reset">
-                        ↻ Reset Budget
-                      </button>
+            
+                  <div className="budget-footer">
+                    <div className="footer-row">
+                      <span>Remaining</span>
+                      <span className={budget.remaining >= 0 ? 'positive' : 'negative'}>
+                        {formatCurrency(budget.remaining)}
+                      </span>
                     </div>
-                  )}
+                    <div className="footer-dates">
+                      <span>{new Date(budget.start_date).toLocaleDateString('en-IN')}</span>
+                      <span>to</span>
+                      <span>{new Date(budget.end_date).toLocaleDateString('en-IN')}</span>
+                      {isExpired && <span className="expired-label">Expired</span>}
+                    </div>
+                    
+                    {/* Action buttons for expired budgets */}
+                    {isExpired && (
+                      <div className="budget-quick-actions">
+                        <button onClick={() => handleRenew(budget)} className="btn-renew">
+                          🔄 Renew for Next Period
+                        </button>
+                        <button onClick={() => handleReset(budget)} className="btn-reset">
+                          ↻ Reset Budget
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Budget Form Modal */}
-{/* Budget Form Modal */}
-{showForm && <BudgetForm 
-budget={editingBudget} 
-  onClose={() => { 
-    setShowForm(false); 
-    setEditingBudget(null);
-    loadBudgets(); 
-  }} 
-/>}
+      {showForm && <BudgetForm 
+        budget={editingBudget} 
+        onClose={() => { 
+          setShowForm(false); 
+          setEditingBudget(null);
+          loadBudgets(); 
+        }} 
+      />}
     </div>
   );
 };
