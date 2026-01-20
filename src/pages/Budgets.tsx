@@ -16,6 +16,7 @@ const Budgets: React.FC = () => {
   useEffect(() => {
     checkUser();
     loadBudgets();
+    checkExpiredBudgets();
   }, []);
 
   const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
@@ -31,6 +32,32 @@ const Budgets: React.FC = () => {
       navigate('/auth');
     } else {
       setUserEmail(session.user.email || '');
+    }
+  };
+
+  const handleRenew = async (budget: BudgetWithSpending) => {
+  if (window.confirm(`Renew budget for ${budget.category_name}? This will create a new budget for the next period.`)) {
+    try {
+      await budgetService.renewBudget(budget);
+      alert('Budget renewed successfully!');
+      loadBudgets();
+    } catch (error: any) {
+      console.error('Error renewing budget:', error);
+      alert('Error: ' + error.message);
+    }
+  }
+};
+
+  const handleReset = async (budget: BudgetWithSpending) => {
+    if (window.confirm(`Reset budget for ${budget.category_name}? This will clear rollover amounts and start fresh.`)) {
+      try {
+        await budgetService.resetBudget(budget.id);
+        alert('Budget reset successfully!');
+        loadBudgets();
+      } catch (error: any) {
+        console.error('Error resetting budget:', error);
+        alert('Error: ' + error.message);
+      }
     }
   };
 
@@ -154,68 +181,91 @@ const Budgets: React.FC = () => {
           </div>
         ) : (
           <div className="budgets-grid">
-            {budgets.map((budget) => {
-              const isOverBudget = budget.spent > budget.amount;
-              const isWarning = budget.percentage >= 80 && !isOverBudget;
-              
-              return (
-                <div key={budget.id} className="budget-card">
-                  <div className="budget-header">
+            {{budgets.map((budget) => {
+            const isOverBudget = budget.spent > budget.amount;
+            const isWarning = budget.percentage >= 80 && !isOverBudget;
+            const isExpired = new Date(budget.end_date) < new Date();
+            const effectiveAmount = budget.amount + (budget.rollover_amount || 0);
+            
+            return (
+              <div key={budget.id} className={`budget-card ${isExpired ? 'expired' : ''}`}>
+                <div className="budget-header">
                   <div className="budget-title">
                     <span className="budget-icon">{budget.category_icon || '📊'}</span>
                     <div>
                       <h4>{budget.category_name || 'General Budget'}</h4>
                       <p className="budget-period">{budget.period || 'Monthly'}</p>
+                      {budget.rollover_amount > 0 && (
+                        <p className="rollover-tag">
+                          +₹{budget.rollover_amount.toLocaleString('en-IN')} rolled over
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="budget-actions">
-                    <button onClick={() => handleEdit(budget)} className="btn-edit">
+                    {isExpired && budget.auto_renew && (
+                      <span className="auto-renew-badge">Auto-renew enabled</span>
+                    )}
+                    <button onClick={() => handleEdit(budget)} className="btn-edit" title="Edit">
                       ✏️
                     </button>
-                    <button onClick={() => handleDelete(budget.id)} className="btn-delete">
+                    <button onClick={() => handleDelete(budget.id)} className="btn-delete" title="Delete">
                       🗑️
                     </button>
                   </div>
                 </div>
-
-                  <div className="budget-progress">
-                    <div className="progress-info">
-                      <span>Spent</span>
-                      <span className={isOverBudget ? 'over-budget' : ''}>
-                        {formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}
-                      </span>
-                    </div>
-                    <div className="progress-bar">
-                      <div 
-                        className={`progress-fill ${isOverBudget ? 'over' : isWarning ? 'warning' : 'safe'}`}
-                        style={{ width: `${Math.min(budget.percentage, 100)}%` }}
-                      />
-                    </div>
-                    <div className="progress-footer">
-                      <span>{budget.percentage.toFixed(1)}%</span>
-                      {isOverBudget && (
-                        <span className="alert">Over by {formatCurrency(budget.spent - budget.amount)}</span>
-                      )}
-                      {isWarning && <span className="warning-text">Approaching limit</span>}
-                    </div>
+          
+                <div className="budget-progress">
+                  <div className="progress-info">
+                    <span>Spent</span>
+                    <span className={isOverBudget ? 'over-budget' : ''}>
+                      {formatCurrency(budget.spent)} / {formatCurrency(effectiveAmount)}
+                    </span>
                   </div>
-
-                  <div className="budget-footer">
-                    <div className="footer-row">
-                      <span>Remaining</span>
-                      <span className={budget.remaining >= 0 ? 'positive' : 'negative'}>
-                        {formatCurrency(budget.remaining)}
-                      </span>
-                    </div>
-                    <div className="footer-dates">
-                      <span>{new Date(budget.start_date).toLocaleDateString('en-IN')}</span>
-                      <span>to</span>
-                      <span>{new Date(budget.end_date).toLocaleDateString('en-IN')}</span>
-                    </div>
+                  <div className="progress-bar">
+                    <div 
+                      className={`progress-fill ${isOverBudget ? 'over' : isWarning ? 'warning' : 'safe'}`}
+                      style={{ width: `${Math.min(budget.percentage, 100)}%` }}
+                    />
+                  </div>
+                  <div className="progress-footer">
+                    <span>{budget.percentage.toFixed(1)}%</span>
+                    {isOverBudget && (
+                      <span className="alert">Over by {formatCurrency(budget.spent - effectiveAmount)}</span>
+                    )}
+                    {isWarning && <span className="warning-text">Approaching limit</span>}
                   </div>
                 </div>
-              );
-            })}
+          
+                <div className="budget-footer">
+                  <div className="footer-row">
+                    <span>Remaining</span>
+                    <span className={budget.remaining >= 0 ? 'positive' : 'negative'}>
+                      {formatCurrency(budget.remaining)}
+                    </span>
+                  </div>
+                  <div className="footer-dates">
+                    <span>{new Date(budget.start_date).toLocaleDateString('en-IN')}</span>
+                    <span>to</span>
+                    <span>{new Date(budget.end_date).toLocaleDateString('en-IN')}</span>
+                    {isExpired && <span className="expired-label">Expired</span>}
+                  </div>
+                  
+                  {/* Action buttons for expired budgets */}
+                  {isExpired && (
+                    <div className="budget-quick-actions">
+                      <button onClick={() => handleRenew(budget)} className="btn-renew">
+                        🔄 Renew for Next Period
+                      </button>
+                      <button onClick={() => handleReset(budget)} className="btn-reset">
+                        ↻ Reset Budget
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
           </div>
         )}
       </div>
