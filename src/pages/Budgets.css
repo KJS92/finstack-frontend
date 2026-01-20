@@ -360,3 +360,9 @@ body.modal-open {
   margin: 4px 0 0 0;
   font-style: italic;
 }
+.sub-info {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
