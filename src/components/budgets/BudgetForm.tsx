@@ -77,27 +77,34 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
     }
   };
 
-  const handlePeriodChange = (period: string) => {
-    const now = new Date();
-    let start_date: string;
-    let end_date: string;
+      const handlePeriodChange = (period: string) => {
+      const now = new Date();
+      let start_date: string;
+      let end_date: string;
+    
+      if (period === 'monthly') {
+        start_date = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        end_date = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      } else if (period === 'yearly') {
+        start_date = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+        end_date = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+      } else if (period === 'quarterly') {
+        const quarter = Math.floor(now.getMonth() / 3);
+        start_date = new Date(now.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
+        end_date = new Date(now.getFullYear(), (quarter + 1) * 3, 0).toISOString().split('T')[0];
+      } else if (period === 'custom') {
+        // For custom, keep existing dates or use current month as default
+        start_date = formData.start_date || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        end_date = formData.end_date || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      } else {
+        // Fallback
+        start_date = formData.start_date;
+        end_date = formData.end_date;
+      }
+    
+      setFormData(prev => ({ ...prev, period, start_date, end_date }));
+    };
 
-    if (period === 'monthly') {
-      start_date = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      end_date = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-    } else if (period === 'yearly') {
-      start_date = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-      end_date = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
-    } else if (period === 'quarterly') {
-      const quarter = Math.floor(now.getMonth() / 3);
-      start_date = new Date(now.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
-      end_date = new Date(now.getFullYear(), (quarter + 1) * 3, 0).toISOString().split('T')[0];
-    } else {
-      return;
-    }
-
-    setFormData(prev => ({ ...prev, period, start_date, end_date }));
-  };
 
   return (
     <div className="budget-form-overlay" onClick={onClose}>
