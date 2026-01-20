@@ -9,6 +9,10 @@ export interface Budget {
   start_date: string;
   end_date: string;  // NOT NULL in your schema
   created_at: string | null;
+  rollover_enabled?: boolean;      // NEW
+  rollover_amount?: number;        // NEW
+  auto_renew?: boolean;            // NEW
+  status?: string;                 // NEW
   // Note: No is_active or updated_at in your schema
 }
 
@@ -148,6 +152,106 @@ class BudgetService {
     if (error) throw error;
   }
 
+  // Reset budget (clear spending, start fresh)
+async resetBudget(id: string): Promise<Budget> {
+  const { data, error } = await supabase
+    .from('budgets')
+    .update({ 
+      rollover_amount: 0,
+      start_date: new Date().toISOString().split('T')[0]
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Renew budget for next period
+async renewBudget(oldBudget: Budget): Promise<Budget> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  // Calculate next period dates
+  const endDate = new Date(oldBudget.end_date);
+  let start_date: string;
+  let end_date: string;
+
+  if (oldBudget.period === 'monthly') {
+    start_date = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1).toISOString().split('T')[0];
+    end_date = new Date(endDate.getFullYear(), endDate.getMonth() + 2, 0).toISOString().split('T')[0];
+  } else if (oldBudget.period === 'quarterly') {
+    start_date = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1).toISOString().split('T')[0];
+    end_date = new Date(endDate.getFullYear(), endDate.getMonth() + 4, 0).toISOString().split('T')[0];
+  } else if (oldBudget.period === 'yearly') {
+    start_date = new Date(endDate.getFullYear() + 1, 0, 1).toISOString().split('T')[0];
+    end_date = new Date(endDate.getFullYear() + 1, 11, 31).toISOString().split('T')[0];
+  } else {
+    throw new Error('Cannot auto-renew custom period budgets');
+  }
+
+  // Calculate rollover amount if enabled
+  const rollover_amount = oldBudget.rollover_enabled ? 
+    Math.max(0, oldBudget.amount - (oldBudget as any).spent || 0) : 0;
+
+  // Create new budget
+  const { data, error } = await supabase
+    .from('budgets')
+    .insert([{
+      user_id: user.id,
+      category_id: oldBudget.category_id,
+      amount: oldBudget.amount,
+      period: oldBudget.period,
+      start_date,
+      end_date,
+      rollover_enabled: oldBudget.rollover_enabled,
+      rollover_amount,
+      auto_renew: oldBudget.auto_renew,
+      status: 'active'
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Mark old budget as expired
+  await supabase
+    .from('budgets')
+    .update({ status: 'expired' })
+    .eq('id', oldBudget.id);
+
+  return data;
+}
+
+// Check and auto-renew expired budgets
+async checkAndRenewBudgets(): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Get expired budgets with auto-renew enabled
+  const { data: expiredBudgets } = await supabase
+    .from('budgets')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('auto_renew', true)
+    .eq('status', 'active')
+    .lt('end_date', today);
+
+  if (expiredBudgets && expiredBudgets.length > 0) {
+    for (const budget of expiredBudgets) {
+      try {
+        await this.renewBudget(budget);
+        console.log('Auto-renewed budget:', budget.id);
+      } catch (err) {
+        console.error('Error renewing budget:', budget.id, err);
+      }
+    }
+  }
+}
+  
   // Get current month's budget summary
   async getCurrentMonthSummary(): Promise<{
     totalBudget: number;
