@@ -233,6 +233,23 @@
 .budget-form-modal {
   padding: 0;
 }
+.budget-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.btn-edit:hover {
+  opacity: 1;
+}
 
 /* Prevent body scroll when modal is open */
 body.modal-open {
