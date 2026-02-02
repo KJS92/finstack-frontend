@@ -4,6 +4,8 @@ import { budgetService, BudgetWithSpending } from '../services/budgetService';
 import { supabase } from '../config/supabase';
 import BudgetForm from '../components/budgets/BudgetForm';
 import './Budgets.css';
+import NotificationDropdown from '../components/notifications/NotificationDropdown';
+import { alertService } from '../services/alertService';
 
 const Budgets: React.FC = () => {
   const navigate = useNavigate();
@@ -70,24 +72,46 @@ const Budgets: React.FC = () => {
   };
 
   const loadBudgets = async () => {
-    try {
-      setLoading(true);
-      console.log('Loading budgets...'); // Debug
-      const [budgetsData, summaryData] = await Promise.all([
-        budgetService.getBudgetsWithSpending(),
-        budgetService.getCurrentMonthSummary()
-      ]);
-      console.log('Budgets loaded:', budgetsData); // Debug
-      console.log('Summary:', summaryData); // Debug
-      setBudgets(budgetsData);
-      setSummary(summaryData);
-    } catch (error) {
-      console.error('Error loading budgets:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    console.log('Loading budgets...'); // Debug
+    const [budgetsData, summaryData] = await Promise.all([
+      budgetService.getBudgetsWithSpending(),
+      budgetService.getCurrentMonthSummary()
+    ]);
+    console.log('Budgets loaded:', budgetsData); // Debug
+    console.log('Summary:', summaryData); // Debug
+    setBudgets(budgetsData);
+    setSummary(summaryData);
+    
+    // Check budgets and create alerts if needed
+    await checkBudgetsAndCreateAlerts(budgetsData);
+  } catch (error) {
+    console.error('Error loading budgets:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
+
+const checkBudgetsAndCreateAlerts = async (budgets: BudgetWithSpending[]) => {
+  try {
+    for (const budget of budgets) {
+      if (budget.category_name) {
+        await alertService.checkBudgetAndCreateAlerts(
+          budget.id,
+          budget.category_name,
+          budget.spent,
+          budget.amount,
+          budget.alert_threshold || 80
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error checking budget alerts:', error);
+  }
+};
+  
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this budget?')) {
       try {
@@ -125,34 +149,37 @@ const Budgets: React.FC = () => {
     <div className="dashboard-container">
       {/* Header - matching Dashboard style */}
       <header className="dashboard-header">
-        <div>
-          <h1>Budgets</h1>
-          <p className="user-email">{userEmail}</p>
-        </div>
-        <div className="header-actions">
-          <button onClick={() => navigate('/add-transaction')} className="btn-primary">
-            Add Transaction
-          </button>
-          <button onClick={() => navigate('/transactions')} className="btn-primary">
-            Upload Transactions
-          </button>
-          <button onClick={() => navigate('/budgets')} className="btn-secondary active">
-            Budgets
-          </button>
-          <button onClick={() => navigate('/categories')} className="btn-secondary">
-            Categories
-          </button>
-          <button onClick={() => navigate('/profile')} className="btn-secondary">
-            Profile
-          </button>
-          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
-            Dashboard
-          </button>
-          <button onClick={handleLogout} className="btn-logout">
-            Logout
-          </button>
-        </div>
-      </header>
+  <div>
+    <h1>Budgets</h1>
+    <p className="user-email">{userEmail}</p>
+  </div>
+  <div className="header-actions">
+    {/* Add Notification Bell */}
+    <NotificationDropdown />
+    
+    <button onClick={() => navigate('/add-transaction')} className="btn-primary">
+      Add Transaction
+    </button>
+    <button onClick={() => navigate('/transactions')} className="btn-primary">
+      Upload Transactions
+    </button>
+    <button onClick={() => navigate('/budgets')} className="btn-secondary active">
+      Budgets
+    </button>
+    <button onClick={() => navigate('/categories')} className="btn-secondary">
+      Categories
+    </button>
+    <button onClick={() => navigate('/profile')} className="btn-secondary">
+      Profile
+    </button>
+    <button onClick={() => navigate('/dashboard')} className="btn-secondary">
+      Dashboard
+    </button>
+    <button onClick={handleLogout} className="btn-logout">
+      Logout
+    </button>
+  </div>
+</header>
 
       {/* Summary Cards */}
       <div className="dashboard-summary">
@@ -225,6 +252,16 @@ const Budgets: React.FC = () => {
                               ⚠️ Expired
                             </span>
                           )}
+                          {isOverBudget && (
+                          <span className="feature-badge alert-exceeded">
+                            🚨 Over Budget
+                          </span>
+                        )}
+                        {isWarning && !isOverBudget && (
+                          <span className="feature-badge alert-warning">
+                            ⚠️ Alert: {budget.alert_threshold}%
+                          </span>
+                        )}
                         </div>
                         
                         {(budget.rollover_amount ?? 0) > 0 && (
