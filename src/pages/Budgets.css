@@ -365,4 +365,13 @@ body.modal-open {
   color: #6b7280;
   margin-top: 4px;
 }
+.feature-badge.alert-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.feature-badge.alert-exceeded {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
