@@ -13,6 +13,7 @@ export interface Budget {
   rollover_amount?: number;
   auto_renew?: boolean;
   status?: string;
+  alert_threshold?: number;
 }
 
 export interface BudgetWithSpending extends Budget {
