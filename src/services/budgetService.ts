@@ -172,32 +172,39 @@ class BudgetService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Calculate next period dates properly
-    const oldEndDate = new Date(oldBudget.end_date);
-    let newStartDate: Date;
-    let newEndDate: Date;
+  // Calculate next period dates properly
+const [oldYear, oldMonth, oldDay] = oldBudget.end_date.split('-').map(Number);
+const oldEndDate = new Date(oldYear, oldMonth - 1, oldDay); // Month is 0-indexed
+let newStartDate: Date;
+let newEndDate: Date;
 
-    if (oldBudget.period === 'monthly') {
-      // Start from the day after old end date
-      newStartDate = new Date(oldEndDate);
-      newStartDate.setDate(oldEndDate.getDate() + 1);
-      
-      // End date is last day of that month
-      newEndDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0);
-    } else if (oldBudget.period === 'weekly') {
-      newStartDate = new Date(oldEndDate);
-      newStartDate.setDate(oldEndDate.getDate() + 1);
-      
-      newEndDate = new Date(newStartDate);
-      newEndDate.setDate(newStartDate.getDate() + 6);
-    } else {
-      // Daily or custom - just add same duration
-      const duration = new Date(oldBudget.end_date).getTime() - new Date(oldBudget.start_date).getTime();
-      newStartDate = new Date(oldEndDate);
-      newStartDate.setDate(oldEndDate.getDate() + 1);
-      
-      newEndDate = new Date(newStartDate.getTime() + duration);
-    }
+if (oldBudget.period === 'monthly') {
+  // Start from the day after old end date
+  newStartDate = new Date(oldYear, oldMonth - 1, oldDay + 1);
+  
+  // End date is last day of the start date's month
+  const startYear = newStartDate.getFullYear();
+  const startMonth = newStartDate.getMonth();
+  newEndDate = new Date(startYear, startMonth + 1, 0); // Day 0 = last day of previous month
+  
+  console.log('Date calculation:', {
+    oldEnd: oldBudget.end_date,
+    newStart: newStartDate.toISOString().split('T')[0],
+    newEnd: newEndDate.toISOString().split('T')[0],
+    newEndDay: newEndDate.getDate()
+  });
+  
+} else if (oldBudget.period === 'weekly') {
+  newStartDate = new Date(oldYear, oldMonth - 1, oldDay + 1);
+  newEndDate = new Date(oldYear, oldMonth - 1, oldDay + 7);
+  
+} else {
+  // Daily or custom - just add same duration
+  const [startYear, startMonth, startDay] = oldBudget.start_date.split('-').map(Number);
+  const duration = oldEndDate.getTime() - new Date(startYear, startMonth - 1, startDay).getTime();
+  newStartDate = new Date(oldYear, oldMonth - 1, oldDay + 1);
+  newEndDate = new Date(newStartDate.getTime() + duration);
+}
 
     // Calculate rollover amount if enabled
     const rolloverAmount = oldBudget.rollover_enabled 
