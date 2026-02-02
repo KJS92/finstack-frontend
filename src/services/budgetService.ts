@@ -151,21 +151,62 @@ class BudgetService {
     if (error) throw error;
   }
 
-  // Reset budget (clear spending, start fresh)
-  async resetBudget(id: string): Promise<Budget> {
-    const { data, error } = await supabase
-      .from('budgets')
-      .update({ 
-        rollover_amount: 0,
-        start_date: new Date().toISOString().split('T')[0]
-      })
-      .eq('id', id)
-      .select()
-      .single();
+  // Reset budget (clear spending, start fresh with proper dates)
+async resetBudget(id: string): Promise<Budget> {
+  // First, get the current budget to know its period
+  const { data: currentBudget, error: fetchError } = await supabase
+    .from('budgets')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-    if (error) throw error;
-    return data;
+  if (fetchError) throw fetchError;
+  if (!currentBudget) throw new Error('Budget not found');
+
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const day = today.getDate();
+  
+  const startDate = new Date(year, month, day);
+  let endDate: Date;
+
+  // Calculate end date based on period
+  if (currentBudget.period === 'monthly') {
+    // End of current month
+    endDate = new Date(year, month + 1, 0);
+  } else if (currentBudget.period === 'weekly') {
+    // 7 days from today
+    endDate = new Date(year, month, day + 6);
+  } else {
+    // Keep same duration as original
+    const oldStart = new Date(currentBudget.start_date);
+    const oldEnd = new Date(currentBudget.end_date);
+    const duration = oldEnd.getTime() - oldStart.getTime();
+    endDate = new Date(startDate.getTime() + duration);
   }
+
+  console.log('Resetting budget:', {
+    id,
+    period: currentBudget.period,
+    oldDates: `${currentBudget.start_date} to ${currentBudget.end_date}`,
+    newDates: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`
+  });
+
+  const { data, error } = await supabase
+    .from('budgets')
+    .update({ 
+      rollover_amount: 0,
+      start_date: startDate.toISOString().split('T')[0],
+      end_date: endDate.toISOString().split('T')[0]
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
 
   // Renew budget for next period
   async renewBudget(oldBudget: BudgetWithSpending): Promise<Budget> {
