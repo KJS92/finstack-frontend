@@ -11,14 +11,15 @@ interface BudgetFormProps {
 const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
-    category_id: budget?.category_id || '',
-    amount: budget?.amount || 0,
-    period: budget?.period || 'monthly',
-    start_date: budget?.start_date || new Date().toISOString().split('T')[0],
-    end_date: budget?.end_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
-    rollover_enabled: budget?.rollover_enabled || false,
-    auto_renew: budget?.auto_renew || false
-  });
+  category_id: budget?.category_id || '',
+  amount: budget?.amount || 0,
+  period: budget?.period || 'monthly',
+  start_date: budget?.start_date || new Date().toISOString().split('T')[0],
+  end_date: budget?.end_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+  rollover_enabled: budget?.rollover_enabled || false,
+  auto_renew: budget?.auto_renew || false,
+  alert_threshold: budget?.alert_threshold || 80  // ADD THIS LINE
+});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -215,6 +216,53 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ budget, onClose }) => {
             </label>
             <p className="help-text">Automatically create a new budget for the next period</p>
           </div>
+
+          {/* Alert Threshold */}
+{/* Alert Threshold */}
+<div className="form-group">
+  <label htmlFor="alertThreshold">
+    Alert Threshold (%)
+    <span className="optional"> - Get notified when spending reaches this level</span>
+  </label>
+  <div className="threshold-input-wrapper">
+    <input
+      type="number"
+      id="alertThreshold"
+      min="50"
+      max="100"
+      step="5"
+      value={formData.alert_threshold}
+      onChange={(e) => setFormData(prev => ({ ...prev, alert_threshold: Number(e.target.value) }))}
+      placeholder="80"
+    />
+    <div className="threshold-presets">
+      <button 
+        type="button" 
+        className={`preset-btn ${formData.alert_threshold === 70 ? 'active' : ''}`}
+        onClick={() => setFormData(prev => ({ ...prev, alert_threshold: 70 }))}
+      >
+        70%
+      </button>
+      <button 
+        type="button" 
+        className={`preset-btn ${formData.alert_threshold === 80 ? 'active' : ''}`}
+        onClick={() => setFormData(prev => ({ ...prev, alert_threshold: 80 }))}
+      >
+        80%
+      </button>
+      <button 
+        type="button" 
+        className={`preset-btn ${formData.alert_threshold === 90 ? 'active' : ''}`}
+        onClick={() => setFormData(prev => ({ ...prev, alert_threshold: 90 }))}
+      >
+        90%
+      </button>
+    </div>
+  </div>
+  <small className="help-text">
+    You'll receive an alert when your spending reaches {formData.alert_threshold}% of your budget
+  </small>
+</div>
 
           {/* Buttons */}
           <div className="form-actions">
