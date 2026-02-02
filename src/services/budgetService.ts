@@ -169,51 +169,69 @@ async resetBudget(id: string): Promise<Budget> {
 }
 
 // Renew budget for next period
-async renewBudget(oldBudget: Budget): Promise<Budget> {
+async renewBudget(oldBudget: BudgetWithSpending): Promise<Budget> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  // Calculate next period dates
-  const endDate = new Date(oldBudget.end_date);
-  let start_date: string;
-  let end_date: string;
+  // Calculate next period dates properly
+  const oldEndDate = new Date(oldBudget.end_date);
+  let newStartDate: Date;
+  let newEndDate: Date;
 
   if (oldBudget.period === 'monthly') {
-    start_date = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1).toISOString().split('T')[0];
-    end_date = new Date(endDate.getFullYear(), endDate.getMonth() + 2, 0).toISOString().split('T')[0];
-  } else if (oldBudget.period === 'quarterly') {
-    start_date = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1).toISOString().split('T')[0];
-    end_date = new Date(endDate.getFullYear(), endDate.getMonth() + 4, 0).toISOString().split('T')[0];
-  } else if (oldBudget.period === 'yearly') {
-    start_date = new Date(endDate.getFullYear() + 1, 0, 1).toISOString().split('T')[0];
-    end_date = new Date(endDate.getFullYear() + 1, 11, 31).toISOString().split('T')[0];
+    // Start from the day after old end date
+    newStartDate = new Date(oldEndDate);
+    newStartDate.setDate(oldEndDate.getDate() + 1);
+    
+    // End date is last day of that month
+    newEndDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0);
+  } else if (oldBudget.period === 'weekly') {
+    newStartDate = new Date(oldEndDate);
+    newStartDate.setDate(oldEndDate.getDate() + 1);
+    
+    newEndDate = new Date(newStartDate);
+    newEndDate.setDate(newStartDate.getDate() + 6);
   } else {
-    throw new Error('Cannot auto-renew custom period budgets');
+    // Daily or custom - just add same duration
+    const duration = new Date(oldBudget.end_date).getTime() - new Date(oldBudget.start_date).getTime();
+    newStartDate = new Date(oldEndDate);
+    newStartDate.setDate(oldEndDate.getDate() + 1);
+    
+    newEndDate = new Date(newStartDate.getTime() + duration);
   }
 
   // Calculate rollover amount if enabled
-  const rollover_amount = oldBudget.rollover_enabled ? 
-    Math.max(0, oldBudget.amount - (oldBudget as any).spent || 0) : 0;
+  const rolloverAmount = oldBudget.rollover_enabled 
+    ? Math.max(0, oldBudget.amount - oldBudget.spent) 
+    : 0;
+
+  console.log('Renewing budget:', {
+    oldPeriod: `${oldBudget.start_date} to ${oldBudget.end_date}`,
+    newPeriod: `${newStartDate.toISOString().split('T')[0]} to ${newEndDate.toISOString().split('T')[0]}`,
+    rolloverAmount,
+    rolloverEnabled: oldBudget.rollover_enabled
+  });
 
   // Create new budget
   const { data, error } = await supabase
     .from('budgets')
-    .insert([{
+    .insert({
       user_id: user.id,
       category_id: oldBudget.category_id,
       amount: oldBudget.amount,
       period: oldBudget.period,
-      start_date,
-      end_date,
+      start_date: newStartDate.toISOString().split('T')[0],
+      end_date: newEndDate.toISOString().split('T')[0],
       rollover_enabled: oldBudget.rollover_enabled,
-      rollover_amount,
       auto_renew: oldBudget.auto_renew,
-      status: 'active'
-    }])
+      rollover_amount: rolloverAmount
+    })
     .select()
     .single();
 
   if (error) throw error;
+  return data;
+}
 
   // Mark old budget as expired
   await supabase
