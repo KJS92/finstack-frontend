@@ -232,14 +232,6 @@ async renewBudget(oldBudget: BudgetWithSpending): Promise<Budget> {
   if (error) throw error;
   return data;
 }
-
-  // Mark old budget as expired
-  await supabase
-    .from('budgets')
-    .update({ status: 'expired' })
-    .eq('id', oldBudget.id);
-
-  return data;
 }
 
 // Check and auto-renew expired budgets
