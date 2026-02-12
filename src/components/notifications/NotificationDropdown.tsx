@@ -7,6 +7,7 @@ const NotificationDropdown: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [readCount, setReadCount] = useState(0);
 
   useEffect(() => {
     loadAlerts();
@@ -16,17 +17,25 @@ const NotificationDropdown: React.FC = () => {
   }, []);
 
   const loadAlerts = async () => {
-    try {
-      const [allAlerts, count] = await Promise.all([
-        alertService.getAlerts(),
-        alertService.getUnreadCount()
-      ]);
-      setAlerts(allAlerts);
-      setUnreadCount(count);
-    } catch (error) {
-      console.error('Error loading alerts:', error);
-    }
-  };
+  try {
+    // Run cleanup in background (doesn't block UI)
+    alertService.cleanupOldAlerts().catch(err => 
+      console.error('Cleanup failed:', err)
+    );
+
+    const [allAlerts, unreadCnt, readCnt] = await Promise.all([
+      alertService.getAlerts(),
+      alertService.getUnreadCount(),
+      alertService.getReadCount()
+    ]);
+    
+    setAlerts(allAlerts);
+    setUnreadCount(unreadCnt);
+    setReadCount(readCnt);
+  } catch (error) {
+    console.error('Error loading alerts:', error);
+  }
+};
 
   const handleMarkAsRead = async (alertId: string) => {
     try {
@@ -93,6 +102,23 @@ const NotificationDropdown: React.FC = () => {
     return date.toLocaleDateString('en-IN');
   };
 
+  const handleClearAllRead = async () => {
+  if (!window.confirm('Delete all read notifications? This cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    setLoading(true);
+    await alertService.clearAllRead();
+    await loadAlerts();
+  } catch (error) {
+    console.error('Error clearing read alerts:', error);
+    alert('Failed to clear notifications. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+}notification-header;
+
   return (
     <div className="notification-container">
       {/* Bell Icon */}
@@ -113,17 +139,29 @@ const NotificationDropdown: React.FC = () => {
           <div className="notification-dropdown">
             {/* Header */}
             <div className="notification-header">
-              <h3>Notifications</h3>
-              {unreadCount > 0 && (
-                <button 
-                  onClick={handleMarkAllAsRead} 
-                  className="mark-all-read"
-                  disabled={loading}
-                >
-                  {loading ? 'Marking...' : 'Mark all read'}
-                </button>
-              )}
-            </div>
+  <h3>Notifications</h3>
+  <div className="header-buttons">
+    {unreadCount > 0 && (
+      <button 
+        onClick={handleMarkAllAsRead} 
+        className="header-btn mark-all"
+        disabled={loading}
+      >
+        {loading ? '...' : 'Mark all read'}
+      </button>
+    )}
+    {readCount > 0 && (
+      <button 
+        onClick={handleClearAllRead} 
+        className="header-btn clear-all"
+        disabled={loading}
+        title={`Clear ${readCount} read notification${readCount !== 1 ? 's' : ''}`}
+      >
+        {loading ? '...' : '🗑️ Clear read'}
+      </button>
+    )}
+  </div>
+</div>
 
             {/* Alerts List */}
             <div className="notification-list">
@@ -170,14 +208,18 @@ const NotificationDropdown: React.FC = () => {
             </div>
 
             {/* Footer */}
-            {alerts.length > 0 && (
-              <div className="notification-footer">
-                <span>{alerts.length} total notification{alerts.length !== 1 ? 's' : ''}</span>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+{alerts.length > 0 && (
+  <div className="notification-footer">
+    <div className="footer-info">
+      <span className="alert-count">
+        {unreadCount} unread • {readCount} read
+      </span>
+      <span className="cleanup-info">
+        Read notifications auto-delete after 30 days
+      </span>
+    </div>
+  </div>
+)}
     </div>
   );
 };
