@@ -149,6 +149,56 @@ class AlertService {
         `⚠️ Budget warning! You've used ${percentage.toFixed(0)}% of your ${budgetName} budget (₹${spent.toLocaleString('en-IN')} / ₹${amount.toLocaleString('en-IN')}).`,
         threshold
       );
+      // Auto-delete old read notifications (older than 30 days)
+async cleanupOldAlerts(): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { error } = await supabase
+    .from('budget_alerts')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('is_read', true)
+    .lt('created_at', thirtyDaysAgo.toISOString());
+
+  if (error) {
+    console.error('Error cleaning up old alerts:', error);
+  } else {
+    console.log('Old read alerts cleaned up');
+  }
+}
+
+// Clear all read notifications
+async clearAllRead(): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('budget_alerts')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('is_read', true);
+
+  if (error) throw error;
+}
+
+// Get count of read alerts (for "Clear All Read" button visibility)
+async getReadCount(): Promise<number> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { count, error } = await supabase
+    .from('budget_alerts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_read', true);
+
+  if (error) throw error;
+  return count || 0;
+}
     }
   }
 }
