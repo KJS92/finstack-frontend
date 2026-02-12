@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
 import './Dashboard.css';
+import AppHeader from '../components/layout/AppHeader';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -87,35 +88,11 @@ useEffect(() => {
 
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <div>
-          <h1>Welcome to FinStack</h1>
-          <p className="user-email">{userEmail}</p>
-        </div>
-        <div className="header-actions">
-        <button onClick={() => navigate('/add-transaction')} className="btn-primary">
-          Add Transaction
-        </button>
-        <button onClick={() => navigate('/transactions')} className="btn-primary">
-          Upload Transactions
-        </button>
-        <button onClick={() => navigate('/budgets')} className="btn-secondary">
-          Budgets
-        </button>
-        <button onClick={() => navigate('/categories')} className="btn-secondary">
-          Categories
-        </button>
-        <button onClick={() => navigate('/profile')} className="btn-secondary">
-          Profile
-        </button>
-        <button onClick={() => navigate('/accounts')} className="btn-secondary">
-          Manage Accounts
-        </button>
-        <button onClick={handleLogout} className="btn-logout">
-          Logout
-        </button>
-      </div>
-      </header>
+      <AppHeader 
+  title="Dashboard" 
+  userEmail={userEmail} 
+  activePage="dashboard"
+/>
 
       <div className="dashboard-summary">
         <div className="summary-card total-balance-card">
