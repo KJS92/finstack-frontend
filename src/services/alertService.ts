@@ -149,9 +149,10 @@ class AlertService {
         `⚠️ Budget warning! You've used ${percentage.toFixed(0)}% of your ${budgetName} budget (₹${spent.toLocaleString('en-IN')} / ₹${amount.toLocaleString('en-IN')}).`,
         threshold
       );
+      
       // Auto-delete old read notifications (older than 30 days)
-async cleanupOldAlerts(): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+    async cleanupOldAlerts(): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
   const thirtyDaysAgo = new Date();
