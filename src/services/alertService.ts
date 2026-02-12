@@ -12,22 +12,36 @@ export interface BudgetAlert {
 }
 
 class AlertService {
-  // Get all alerts for current user
+  // Get all alerts for current user (unread + recent read)
   async getAlerts(unreadOnly: boolean = false): Promise<BudgetAlert[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    let query = supabase
+    if (unreadOnly) {
+      // Only unread
+      const { data, error } = await supabase
+        .from('budget_alerts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    }
+
+    // Unread + recent read (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data, error } = await supabase
       .from('budget_alerts')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .or(`is_read.eq.false,created_at.gte.${sevenDaysAgo.toISOString()}`)
+      .order('created_at', { ascending: false })
+      .limit(50); // Limit to 50 most recent
 
-    if (unreadOnly) {
-      query = query.eq('is_read', false);
-    }
-
-    const { data, error } = await query;
     if (error) throw error;
     return data || [];
   }
@@ -42,6 +56,21 @@ class AlertService {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('is_read', false);
+
+    if (error) throw error;
+    return count || 0;
+  }
+
+  // Get count of read alerts (for "Clear All Read" button visibility)
+  async getReadCount(): Promise<number> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { count, error } = await supabase
+      .from('budget_alerts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', true);
 
     if (error) throw error;
     return count || 0;
@@ -149,58 +178,43 @@ class AlertService {
         `⚠️ Budget warning! You've used ${percentage.toFixed(0)}% of your ${budgetName} budget (₹${spent.toLocaleString('en-IN')} / ₹${amount.toLocaleString('en-IN')}).`,
         threshold
       );
-      
-      // Auto-delete old read notifications (older than 30 days)
-    async cleanupOldAlerts(): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const { error } = await supabase
-    .from('budget_alerts')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('is_read', true)
-    .lt('created_at', thirtyDaysAgo.toISOString());
-
-  if (error) {
-    console.error('Error cleaning up old alerts:', error);
-  } else {
-    console.log('Old read alerts cleaned up');
-  }
-}
-
-// Clear all read notifications
-async clearAllRead(): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { error } = await supabase
-    .from('budget_alerts')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('is_read', true);
-
-  if (error) throw error;
-}
-
-// Get count of read alerts (for "Clear All Read" button visibility)
-async getReadCount(): Promise<number> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { count, error } = await supabase
-    .from('budget_alerts')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('is_read', true);
-
-  if (error) throw error;
-  return count || 0;
-}
     }
+  }
+
+  // Auto-delete old read notifications (older than 30 days)
+  async cleanupOldAlerts(): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { error } = await supabase
+      .from('budget_alerts')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('is_read', true)
+      .lt('created_at', thirtyDaysAgo.toISOString());
+
+    if (error) {
+      console.error('Error cleaning up old alerts:', error);
+    } else {
+      console.log('Old read alerts cleaned up');
+    }
+  }
+
+  // Clear all read notifications
+  async clearAllRead(): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('budget_alerts')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('is_read', true);
+
+    if (error) throw error;
   }
 }
 
