@@ -1,227 +1,235 @@
-import React, { useState, useEffect } from 'react';
-import { alertService, BudgetAlert } from '../../services/alertService';
-import './NotificationDropdown.css';
+.notification-container {
+  position: relative;
+}
 
-const NotificationDropdown: React.FC = () => {
-  const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [readCount, setReadCount] = useState(0);
+.notification-bell {
+  position: relative;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  transition: transform 0.2s;
+}
 
-  useEffect(() => {
-    loadAlerts();
-    // Reload alerts every 30 seconds
-    const interval = setInterval(loadAlerts, 30000);
-    return () => clearInterval(interval);
-  }, []);
+.notification-bell:hover {
+  transform: scale(1.1);
+}
 
-  const loadAlerts = async () => {
-  try {
-    // Run cleanup in background (doesn't block UI)
-    alertService.cleanupOldAlerts().catch(err => 
-      console.error('Cleanup failed:', err)
-    );
+.notification-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
 
-    const [allAlerts, unreadCnt, readCnt] = await Promise.all([
-      alertService.getAlerts(),
-      alertService.getUnreadCount(),
-      alertService.getReadCount()
-    ]);
-    
-    setAlerts(allAlerts);
-    setUnreadCount(unreadCnt);
-    setReadCount(readCnt);
-  } catch (error) {
-    console.error('Error loading alerts:', error);
-  }
-};
+.notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 998;
+}
 
-  const handleMarkAsRead = async (alertId: string) => {
-    try {
-      await alertService.markAsRead(alertId);
-      loadAlerts();
-    } catch (error) {
-      console.error('Error marking alert as read:', error);
-    }
-  };
+.notification-dropdown {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  width: 380px;
+  max-height: 500px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+}
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      setLoading(true);
-      await alertService.markAllAsRead();
-      await loadAlerts();
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 12px;
+}
 
-  const handleDelete = async (alertId: string) => {
-    try {
-      await alertService.deleteAlert(alertId);
-      loadAlerts();
-    } catch (error) {
-      console.error('Error deleting alert:', error);
-    }
-  };
+.notification-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  flex-shrink: 0;
+}
 
-  const getAlertIcon = (type: BudgetAlert['alert_type']) => {
-    switch (type) {
-      case 'warning': return '⚠️';
-      case 'exceeded': return '🚨';
-      case 'expired': return '⏰';
-      case 'renewed': return '🔄';
-      default: return '📢';
-    }
-  };
+.header-buttons {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
-  const getAlertColor = (type: BudgetAlert['alert_type']) => {
-    switch (type) {
-      case 'warning': return '#f59e0b';
-      case 'exceeded': return '#ef4444';
-      case 'expired': return '#6b7280';
-      case 'renewed': return '#10b981';
-      default: return '#3b82f6';
-    }
-  };
+.header-btn {
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
 
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
+.header-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
 
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString('en-IN');
-  };
+.header-btn.mark-all {
+  color: #3b82f6;
+  border-color: #bfdbfe;
+}
 
-  const handleClearAllRead = async () => {
-  if (!window.confirm('Delete all read notifications? This cannot be undone.')) {
-    return;
-  }
-  
-  try {
-    setLoading(true);
-    await alertService.clearAllRead();
-    await loadAlerts();
-  } catch (error) {
-    console.error('Error clearing read alerts:', error);
-    alert('Failed to clear notifications. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-}notification-header;
+.header-btn.mark-all:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
 
-  return (
-    <div className="notification-container">
-      {/* Bell Icon */}
-      <button 
-        className="notification-bell"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        🔔
-        {unreadCount > 0 && (
-          <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
-        )}
-      </button>
+.header-btn.clear-all {
+  color: #ef4444;
+  border-color: #fecaca;
+}
 
-      {/* Dropdown */}
-      {isOpen && (
-        <>
-          <div className="notification-overlay" onClick={() => setIsOpen(false)} />
-          <div className="notification-dropdown">
-            {/* Header */}
-            <div className="notification-header">
-  <h3>Notifications</h3>
-  <div className="header-buttons">
-    {unreadCount > 0 && (
-      <button 
-        onClick={handleMarkAllAsRead} 
-        className="header-btn mark-all"
-        disabled={loading}
-      >
-        {loading ? '...' : 'Mark all read'}
-      </button>
-    )}
-    {readCount > 0 && (
-      <button 
-        onClick={handleClearAllRead} 
-        className="header-btn clear-all"
-        disabled={loading}
-        title={`Clear ${readCount} read notification${readCount !== 1 ? 's' : ''}`}
-      >
-        {loading ? '...' : '🗑️ Clear read'}
-      </button>
-    )}
-  </div>
-</div>
+.header-btn.clear-all:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
 
-            {/* Alerts List */}
-            <div className="notification-list">
-              {alerts.length === 0 ? (
-                <div className="no-notifications">
-                  <p>🎉 No notifications</p>
-                  <span>You're all caught up!</span>
-                </div>
-              ) : (
-                alerts.map((alert) => (
-                  <div 
-                    key={alert.id} 
-                    className={`notification-item ${alert.is_read ? 'read' : 'unread'}`}
-                    style={{ borderLeftColor: getAlertColor(alert.alert_type) }}
-                  >
-                    <div className="notification-icon">
-                      {getAlertIcon(alert.alert_type)}
-                    </div>
-                    <div className="notification-content">
-                      <p className="notification-message">{alert.message}</p>
-                      <span className="notification-time">{formatTime(alert.created_at)}</span>
-                    </div>
-                    <div className="notification-actions">
-                      {!alert.is_read && (
-                        <button
-                          onClick={() => handleMarkAsRead(alert.id)}
-                          className="btn-icon"
-                          title="Mark as read"
-                        >
-                          ✓
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(alert.id)}
-                        className="btn-icon delete"
-                        title="Delete"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+.header-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-            {/* Footer */}
-{alerts.length > 0 && (
-  <div className="notification-footer">
-    <div className="footer-info">
-      <span className="alert-count">
-        {unreadCount} unread • {readCount} read
-      </span>
-      <span className="cleanup-info">
-        Read notifications auto-delete after 30 days
-      </span>
-    </div>
-  </div>
-)}
-    </div>
-  );
-};
+.notification-list {
+  overflow-y: auto;
+  max-height: 400px;
+}
 
-export default NotificationDropdown;
+.notification-item {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f3f4f6;
+  border-left: 3px solid transparent;
+  transition: background 0.2s;
+}
+
+.notification-item:hover {
+  background: #f9fafb;
+}
+
+.notification-item.unread {
+  background: #eff6ff;
+}
+
+.notification-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-message {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.btn-icon.delete:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.no-notifications {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.no-notifications p {
+  font-size: 20px;
+  margin: 0 0 8px 0;
+}
+
+.no-notifications span {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.notification-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 12px 12px;
+}
+
+.footer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alert-count {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.cleanup-info {
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
