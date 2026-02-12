@@ -6,6 +6,7 @@ import BudgetForm from '../components/budgets/BudgetForm';
 import './Budgets.css';
 import NotificationDropdown from '../components/notifications/NotificationDropdown';
 import { alertService } from '../services/alertService';
+import AppHeader from '../components/layout/AppHeader';
 
 const Budgets: React.FC = () => {
   const navigate = useNavigate();
@@ -148,38 +149,11 @@ const checkBudgetsAndCreateAlerts = async (budgets: BudgetWithSpending[]) => {
   return (
     <div className="dashboard-container">
       {/* Header - matching Dashboard style */}
-      <header className="dashboard-header">
-  <div>
-    <h1>Budgets</h1>
-    <p className="user-email">{userEmail}</p>
-  </div>
-  <div className="header-actions">
-    {/* Add Notification Bell */}
-    <NotificationDropdown />
-    
-    <button onClick={() => navigate('/add-transaction')} className="btn-primary">
-      Add Transaction
-    </button>
-    <button onClick={() => navigate('/transactions')} className="btn-primary">
-      Upload Transactions
-    </button>
-    <button onClick={() => navigate('/budgets')} className="btn-secondary active">
-      Budgets
-    </button>
-    <button onClick={() => navigate('/categories')} className="btn-secondary">
-      Categories
-    </button>
-    <button onClick={() => navigate('/profile')} className="btn-secondary">
-      Profile
-    </button>
-    <button onClick={() => navigate('/dashboard')} className="btn-secondary">
-      Dashboard
-    </button>
-    <button onClick={handleLogout} className="btn-logout">
-      Logout
-    </button>
-  </div>
-</header>
+      <AppHeader 
+  title="Budgets" 
+  userEmail={userEmail} 
+  activePage="budgets"
+/>
 
       {/* Summary Cards */}
       <div className="dashboard-summary">
