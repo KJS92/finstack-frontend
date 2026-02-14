@@ -17,6 +17,7 @@ const Transactions: React.FC = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
+   checkUser();
     loadAccounts();
   }, []);
 
@@ -28,13 +29,6 @@ const Transactions: React.FC = () => {
     setUserEmail(session.user.email || '');
   }
 };
-  
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-    }
-  };
 
   const loadAccounts = async () => {
     try {
