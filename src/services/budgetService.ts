@@ -372,6 +372,48 @@ async renewBudget(oldBudget: BudgetWithSpending): Promise<Budget> {
       totalRemaining: budgets.reduce((sum, b) => sum + b.remaining, 0)
     };
   }
+async checkExpiredBudgets(): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const { data: expiredBudgets } = await supabase
+      .from('budgets')
+      .select(`
+        *,
+        categories (
+          name,
+          icon
+        )
+      `)
+      .eq('user_id', user.id)
+      .gte('end_date', yesterdayStr)
+      .lte('end_date', today)
+      .or('status.is.null,status.neq.expired');
+
+    if (expiredBudgets && expiredBudgets.length > 0) {
+      for (const budget of expiredBudgets) {
+        try {
+          const categoryName = budget.categories?.name || 'Budget';
+          
+          await alertService.createAlert(
+            budget.id,
+            'expired',
+            `⏰ Your ${categoryName} budget has expired. ${budget.auto_renew ? 'Auto-renewal will create a new budget.' : 'Click to renew it for the next period.'}`,
+            undefined
+          );
+
+          console.log('Created expired alert for budget:', budget.id);
+        } catch (err) {
+          console.error('Error creating expired alert:', budget.id, err);
+        }
+      }
+    }
+  } 
 }
 
 export const budgetService = new BudgetService();
