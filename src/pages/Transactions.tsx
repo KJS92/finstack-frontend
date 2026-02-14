@@ -17,7 +17,6 @@ const Transactions: React.FC = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    checkUser();
     loadAccounts();
   }, []);
 
