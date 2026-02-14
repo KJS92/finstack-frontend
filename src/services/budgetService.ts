@@ -371,49 +371,61 @@ async renewBudget(oldBudget: BudgetWithSpending): Promise<Budget> {
       totalSpent: budgets.reduce((sum, b) => sum + b.spent, 0),
       totalRemaining: budgets.reduce((sum, b) => sum + b.remaining, 0)
     };
-  }
+  }// Check for expired budgets and create alerts
 async checkExpiredBudgets(): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
 
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    const { data: expiredBudgets } = await supabase
-      .from('budgets')
-      .select(`
-        *,
-        categories (
-          name,
-          icon
-        )
-      `)
-      .eq('user_id', user.id)
-      .gte('end_date', yesterdayStr)
-      .lte('end_date', today)
-      .or('status.is.null,status.neq.expired');
+  console.log('🔍 Checking expired budgets:', { yesterdayStr, today });
 
-    if (expiredBudgets && expiredBudgets.length > 0) {
-      for (const budget of expiredBudgets) {
-        try {
-          const categoryName = budget.categories?.name || 'Budget';
-          
-          await alertService.createAlert(
-            budget.id,
-            'expired',
-            `⏰ Your ${categoryName} budget has expired. ${budget.auto_renew ? 'Auto-renewal will create a new budget.' : 'Click to renew it for the next period.'}`,
-            undefined
-          );
+  const { data: expiredBudgets, error } = await supabase
+    .from('budgets')
+    .select(`
+      *,
+      categories (
+        name,
+        icon
+      )
+    `)
+    .eq('user_id', user.id)
+    .gte('end_date', yesterdayStr)
+    .lte('end_date', today)
+    .or('status.is.null,status.neq.expired');
 
-          console.log('Created expired alert for budget:', budget.id);
-        } catch (err) {
-          console.error('Error creating expired alert:', budget.id, err);
-        }
+  console.log('📊 Expired budgets query result:', { 
+    count: expiredBudgets?.length || 0, 
+    budgets: expiredBudgets,
+    error 
+  });
+
+  if (expiredBudgets && expiredBudgets.length > 0) {
+    for (const budget of expiredBudgets) {
+      try {
+        const categoryName = budget.categories?.name || 'Budget';
+        
+        console.log('🔔 Creating expired alert for:', categoryName, budget.id);
+        
+        await alertService.createAlert(
+          budget.id,
+          'expired',
+          `⏰ Your ${categoryName} budget has expired. ${budget.auto_renew ? 'Auto-renewal will create a new budget.' : 'Click to renew it for the next period.'}`,
+          undefined
+        );
+
+        console.log('✅ Created expired alert for budget:', budget.id);
+      } catch (err) {
+        console.error('❌ Error creating expired alert:', budget.id, err);
       }
     }
-  } 
+  } else {
+    console.log('⚠️ No expired budgets found matching criteria');
+  }
 }
-
+    }
+  
 export const budgetService = new BudgetService();
