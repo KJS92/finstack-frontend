@@ -131,26 +131,11 @@ const Accounts: React.FC = () => {
 
   return (
     <div className="accounts-container">
-      <header className="accounts-header">
-        <div>
-          <h1>My Accounts</h1>
-          <p className="total-balance">Total Balance: {formatCurrency(totalBalance)}</p>
-        </div>
-        <div className="header-actions">
-          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
-            Dashboard
-          </button>
-          <button onClick={() => navigate('/categories')} className="btn-secondary">
-            Categories
-          </button>
-          <button onClick={() => navigate('/profile')} className="btn-secondary">
-            Profile
-          </button>
-          <button onClick={handleLogout} className="btn-logout">
-            Logout
-          </button>
-        </div>
-      </header>
+      <AppHeader 
+  title="Accounts" 
+  userEmail={userEmail} 
+  activePage="accounts"
+/>
 
       {error && <div className="error-message">{error}</div>}
 
