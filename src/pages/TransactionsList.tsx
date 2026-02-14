@@ -8,6 +8,8 @@ import { categoryService, Category } from '../services/categoryService';
 import { categorizationService } from '../services/categorizationService';
 import Toast from '../components/Toast';
 import './TransactionsList.css';
+import AppHeader from '../components/layout/AppHeader';
+
 
 const TransactionsList: React.FC = () => {
   const location = useLocation();
@@ -33,6 +35,8 @@ const TransactionsList: React.FC = () => {
     count: 0 
   });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [userEmail, setUserEmail] = useState('');
+
 
   useEffect(() => {
     checkUser();
@@ -76,12 +80,14 @@ const TransactionsList: React.FC = () => {
     };
   }, []);
 
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-    }
-  };
+ const checkUser = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    navigate('/auth');
+  } else {
+    setUserEmail(session.user.email || '');
+  }
+};
 
   const loadCategories = async () => {
     try {
