@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { accountService, Account, CreateAccountInput } from '../services/accountService';
 import './Accounts.css';
+import AppHeader from '../components/layout/AppHeader';
 
 const Accounts: React.FC = () => {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ const Accounts: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [error, setError] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+
 
   // Form state
   const [formData, setFormData] = useState<CreateAccountInput>({
@@ -27,10 +30,12 @@ const Accounts: React.FC = () => {
     loadAccounts();
   }, []);
 
-  const checkUser = async () => {
+ const checkUser = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     navigate('/auth');
+  } else {
+    setUserEmail(session.user.email || '');
   }
 };
 
