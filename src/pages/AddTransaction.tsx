@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
 import './AddTransaction.css';
+import AppHeader from '../components/layout/AppHeader';
+
 
 const AddTransaction: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +18,8 @@ const AddTransaction: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+
 
   useEffect(() => {
     checkUser();
@@ -23,11 +27,13 @@ const AddTransaction: React.FC = () => {
   }, []);
 
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-    }
-  };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    navigate('/auth');
+  } else {
+    setUserEmail(session.user.email || '');
+  }
+};
 
   const loadAccounts = async () => {
     try {
@@ -110,12 +116,11 @@ const AddTransaction: React.FC = () => {
 
   return (
     <div className="add-transaction-container">
-      <header className="add-transaction-header">
-        <h1>Add Transaction</h1>
-        <button onClick={handleCancel} className="btn-secondary">
-          Back to Dashboard
-        </button>
-      </header>
+      <AppHeader 
+  title="Add Transaction" 
+  userEmail={userEmail} 
+  activePage="add-transaction"
+/>
 
       {error && <div className="error-message">{error}</div>}
 
