@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
 import { fileUploadService } from '../services/fileUploadService';
 import './Transactions.css';
+import AppHeader from '../components/layout/AppHeader';
 
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
@@ -105,23 +106,11 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="transactions-container">
-      <header className="transactions-header">
-        <h1>Upload Transactions</h1>
-        <div className="header-actions">
-          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
-            Dashboard
-          </button>
-          <button onClick={() => navigate('/accounts')} className="btn-secondary">
-            Accounts
-          </button>
-          <button onClick={() => navigate('/profile')} className="btn-secondary">
-            Profile
-          </button>
-          <button onClick={handleLogout} className="btn-logout">
-            Logout
-          </button>
-        </div>
-      </header>
+      <AppHeader 
+  title="Transactions" 
+  userEmail={userEmail} 
+  activePage="transactions"
+/>
 
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
