@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { profileService, UserProfile } from '../services/profileService';
 import './Profile.css';
+import AppHeader from '../components/layout/AppHeader';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const Profile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   
   // Password change form
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -24,11 +26,13 @@ const Profile: React.FC = () => {
   }, []);
 
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-    }
-  };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    navigate('/auth');
+  } else {
+    setUserEmail(session.user.email || '');
+  }
+};
 
   const loadProfile = async () => {
     try {
@@ -95,17 +99,7 @@ const Profile: React.FC = () => {
 
   return (
     <div className="profile-container">
-      <header className="profile-header">
-        <h1>Profile & Settings</h1>
-        <div className="header-actions">
-          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
-            Dashboard
-          </button>
-          <button onClick={handleLogout} className="btn-logout">
-            Logout
-          </button>
-        </div>
-      </header>
+      <AppHeader title="Profile" userEmail={userEmail} activePage="profile" />
 
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
