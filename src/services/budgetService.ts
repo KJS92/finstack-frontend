@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { alertService } from './alertService';
 
 export interface Budget {
   id: string;
@@ -304,9 +305,24 @@ async renewBudget(oldBudget: BudgetWithSpending): Promise<Budget> {
     .update({ status: 'expired' })
     .eq('id', oldBudget.id);
 
+  try {
+  const categoryName = oldBudget.category_name || 'Budget';
+  const rolloverText = rolloverAmount > 0 
+    ? ` with ₹${rolloverAmount.toLocaleString('en-IN')} rolled over`
+    : '';
+  
+  await alertService.createAlert(
+    data.id,
+    'renewed',
+    `✅ ${categoryName} budget renewed for next period${rolloverText}!`,
+    undefined
+  );
+} catch (alertError) {
+  console.error('Error creating renewal alert:', alertError);
+}
   return data;
 }
-
+  
   // Check and auto-renew expired budgets
   async checkAndRenewBudgets(): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
@@ -327,6 +343,13 @@ async renewBudget(oldBudget: BudgetWithSpending): Promise<Budget> {
       for (const budget of expiredBudgets) {
         try {
           await this.renewBudget(budget);
+          const categoryName = budget.categories?.name || 'Budget';
+          await alertService.createAlert(
+          budget.id,
+          'expired',
+          `⏰ Your ${categoryName} budget has expired. ${budget.auto_renew ? 'Auto-renewal will create a new budget.' : 'Click to renew it for the next period.'}`,
+          undefined
+        );
           console.log('Auto-renewed budget:', budget.id);
         } catch (err) {
           console.error('Error renewing budget:', budget.id, err);
