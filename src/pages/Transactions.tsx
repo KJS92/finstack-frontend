@@ -5,7 +5,6 @@ import { accountService, Account } from '../services/accountService';
 import { fileUploadService } from '../services/fileUploadService';
 import './Transactions.css';
 import AppHeader from '../components/layout/AppHeader';
-const [userEmail, setUserEmail] = useState('');
 
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
@@ -15,7 +14,9 @@ const Transactions: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [userEmail, setUserEmail] = useState('');
 
+  
   useEffect(() => {
    checkUser();
     loadAccounts();
