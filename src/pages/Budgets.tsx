@@ -87,6 +87,7 @@ const Budgets: React.FC = () => {
     
     // Check budgets and create alerts if needed
     await checkBudgetsAndCreateAlerts(budgetsData);
+    await budgetService.checkExpiredBudgets();
   } catch (error) {
     console.error('Error loading budgets:', error);
   } finally {
