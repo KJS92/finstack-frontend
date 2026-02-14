@@ -5,6 +5,7 @@ import { accountService, Account } from '../services/accountService';
 import { fileUploadService } from '../services/fileUploadService';
 import './Transactions.css';
 import AppHeader from '../components/layout/AppHeader';
+const [userEmail, setUserEmail] = useState('');
 
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,15 @@ const Transactions: React.FC = () => {
     loadAccounts();
   }, []);
 
+  const checkUser = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    navigate('/auth');
+  } else {
+    setUserEmail(session.user.email || '');
+  }
+};
+  
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
