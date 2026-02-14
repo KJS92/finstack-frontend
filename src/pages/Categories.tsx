@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { categoryService, Category } from '../services/categoryService';
 import './Categories.css';
+import AppHeader from '../components/layout/AppHeader';
+
 
 const Categories: React.FC = () => {
   const navigate = useNavigate();
