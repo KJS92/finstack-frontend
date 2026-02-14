@@ -11,6 +11,7 @@ const Categories: React.FC = () => {
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [userEmail, setUserEmail] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     icon: '📌',
@@ -25,11 +26,13 @@ const Categories: React.FC = () => {
   }, []);
 
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-    }
-  };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    navigate('/auth');
+  } else {
+    setUserEmail(session.user.email || '');
+  }
+};
 
   const loadCategories = async () => {
     try {
@@ -113,26 +116,7 @@ const Categories: React.FC = () => {
 
   return (
     <div className="categories-container">
-      <header className="categories-header">
-        <h1>Categories</h1>
-        <div className="header-actions">
-          <button onClick={() => handleOpenModal()} className="btn-primary">
-            + Add Category
-          </button>
-          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
-            Dashboard
-          </button>
-          <button onClick={() => navigate('/transactions-list')} className="btn-secondary">
-            Transactions
-          </button>
-          <button onClick={() => navigate('/accounts')} className="btn-secondary">
-            Accounts
-          </button>
-          <button onClick={handleLogout} className="btn-logout">
-            Logout
-          </button>
-        </div>
-      </header>
+      <AppHeader title="Categories" userEmail={userEmail} activePage="categories" />
 
       {error && <div className="error-message">{error}</div>}
 
