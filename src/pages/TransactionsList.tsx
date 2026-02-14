@@ -346,30 +346,11 @@ const TransactionsList: React.FC = () => {
 
   return (
     <div className="transactions-list-container">
-      <header className="transactions-list-header">
-        <h1>All Transactions</h1>
-        <div className="header-actions">
-          <button onClick={() => navigate('/transactions')} className="btn-primary">
-            Upload New
-          </button>
-          <button 
-            onClick={handleBulkCategorize} 
-            className="btn-secondary" 
-            disabled={bulkCategorizing}
-          >
-            {bulkCategorizing ? 'Categorizing...' : '🤖 Auto-Categorize'}
-          </button>
-          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
-            Dashboard
-          </button>
-          <button onClick={() => navigate('/accounts')} className="btn-secondary">
-            Accounts
-          </button>
-          <button onClick={handleLogout} className="btn-logout">
-            Logout
-          </button>
-        </div>
-      </header>
+      <AppHeader 
+  title="Transaction List" 
+  userEmail={userEmail} 
+  activePage="transactions"
+/>
 
       {error && <div className="error-message">{error}</div>}
 
