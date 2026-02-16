@@ -72,123 +72,135 @@ class ReportsService {
   }
 
   // Get category breakdown for a date range
-  async getCategoryBreakdown(startDate: string, endDate: string): Promise<CategoryBreakdown[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  // Get category breakdown for a date range
+async getCategoryBreakdown(startDate: string, endDate: string): Promise<CategoryBreakdown[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase
-      .from('transactions')
-      .select(`
-        amount,
-        category_id,
-        categories (
-          name,
-          icon,
-          color
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('transaction_type', 'debit')
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate);
+  // First get all transactions
+  const { data: transactions, error: txError } = await supabase
+    .from('transactions')
+    .select('amount, category_id')
+    .eq('user_id', user.id)
+    .eq('transaction_type', 'debit')
+    .gte('transaction_date', startDate)
+    .lte('transaction_date', endDate);
 
-    if (error) throw error;
+  if (txError) throw txError;
 
-    // Group by category
-    const categoryMap = new Map<string, CategoryBreakdown>();
-    
-    data?.forEach((transaction: any) => {
-      const categoryId = transaction.category_id || 'uncategorized';
-      const categoryName = transaction.categories?.name || 'Uncategorized';
-      const categoryIcon = transaction.categories?.icon || '📦';
-      const categoryColor = transaction.categories?.color || '#999999';
+  // Then get all categories
+  const { data: categories, error: catError } = await supabase
+    .from('categories')
+    .select('id, name, icon, color')
+    .eq('user_id', user.id);
 
-      if (categoryMap.has(categoryId)) {
-        const existing = categoryMap.get(categoryId)!;
-        existing.total_amount += transaction.amount;
-        existing.transaction_count += 1;
-      } else {
-        categoryMap.set(categoryId, {
-          category_id: categoryId,
-          category_name: categoryName,
-          category_icon: categoryIcon,
-          category_color: categoryColor,
-          total_amount: transaction.amount,
-          transaction_count: 1,
-          percentage: 0
-        });
-      }
-    });
+  if (catError) throw catError;
 
-    // Calculate percentages
-    const totalSpending = Array.from(categoryMap.values())
-      .reduce((sum, cat) => sum + cat.total_amount, 0);
+  // Create a map of categories
+  const categoryMapById = new Map(categories?.map(cat => [cat.id, cat]) || []);
 
-    const breakdown = Array.from(categoryMap.values()).map(cat => ({
-      ...cat,
-      percentage: totalSpending > 0 ? (cat.total_amount / totalSpending) * 100 : 0
-    }));
+  // Group by category
+  const categoryMap = new Map<string, CategoryBreakdown>();
+  
+  transactions?.forEach((transaction: any) => {
+    const categoryId = transaction.category_id || 'uncategorized';
+    const category = categoryMapById.get(categoryId);
+    const categoryName = category?.name || 'Uncategorized';
+    const categoryIcon = category?.icon || '📦';
+    const categoryColor = category?.color || '#999999';
 
-    // Sort by amount descending
-    return breakdown.sort((a, b) => b.total_amount - a.total_amount);
-  }
+    if (categoryMap.has(categoryId)) {
+      const existing = categoryMap.get(categoryId)!;
+      existing.total_amount += transaction.amount;
+      existing.transaction_count += 1;
+    } else {
+      categoryMap.set(categoryId, {
+        category_id: categoryId,
+        category_name: categoryName,
+        category_icon: categoryIcon,
+        category_color: categoryColor,
+        total_amount: transaction.amount,
+        transaction_count: 1,
+        percentage: 0
+      });
+    }
+  });
+
+  // Calculate percentages
+  const totalSpending = Array.from(categoryMap.values())
+    .reduce((sum, cat) => sum + cat.total_amount, 0);
+
+  const breakdown = Array.from(categoryMap.values()).map(cat => ({
+    ...cat,
+    percentage: totalSpending > 0 ? (cat.total_amount / totalSpending) * 100 : 0
+  }));
+
+  // Sort by amount descending
+  return breakdown.sort((a, b) => b.total_amount - a.total_amount);
+}
 
   // Get account-wise summary
-  async getAccountSummary(startDate: string, endDate: string): Promise<AccountSummary[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  // Get account-wise summary
+async getAccountSummary(startDate: string, endDate: string): Promise<AccountSummary[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase
-      .from('transactions')
-      .select(`
-        amount,
-        transaction_type,
-        account_id,
-        accounts (
-          account_name,
-          account_type
-        )
-      `)
-      .eq('user_id', user.id)
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate);
+  // First get all transactions
+  const { data: transactions, error: txError } = await supabase
+    .from('transactions')
+    .select('amount, transaction_type, account_id')
+    .eq('user_id', user.id)
+    .gte('transaction_date', startDate)
+    .lte('transaction_date', endDate);
 
-    if (error) throw error;
+  if (txError) throw txError;
 
-    // Group by account
-    const accountMap = new Map<string, AccountSummary>();
-    
-    data?.forEach((transaction: any) => {
-      const accountId = transaction.account_id || 'unknown';
-      const accountName = transaction.accounts?.account_name || 'Unknown Account';
-      const accountType = transaction.accounts?.account_type || 'unknown';
+  // Then get all accounts
+  const { data: accounts, error: accError } = await supabase
+    .from('accounts')
+    .select('id, account_name, account_type')
+    .eq('user_id', user.id);
 
-      if (accountMap.has(accountId)) {
-        const existing = accountMap.get(accountId)!;
-        if (transaction.transaction_type === 'credit') {
-          existing.total_income += transaction.amount;
-        } else {
-          existing.total_expense += transaction.amount;
-        }
-        existing.transaction_count += 1;
-        existing.net_change = existing.total_income - existing.total_expense;
+  if (accError) throw accError;
+
+  // Create a map of accounts
+  const accountMapById = new Map(accounts?.map(acc => [acc.id, acc]) || []);
+
+  // Group by account
+  const accountMap = new Map<string, AccountSummary>();
+  
+  transactions?.forEach((transaction: any) => {
+    const accountId = transaction.account_id || 'unknown';
+    const account = accountMapById.get(accountId);
+    const accountName = account?.account_name || 'Unknown Account';
+    const accountType = account?.account_type || 'unknown';
+
+    if (accountMap.has(accountId)) {
+      const existing = accountMap.get(accountId)!;
+      if (transaction.transaction_type === 'credit') {
+        existing.total_income += transaction.amount;
       } else {
-        accountMap.set(accountId, {
-          account_id: accountId,
-          account_name: accountName,
-          account_type: accountType,
-          total_income: transaction.transaction_type === 'credit' ? transaction.amount : 0,
-          total_expense: transaction.transaction_type === 'debit' ? transaction.amount : 0,
-          net_change: transaction.transaction_type === 'credit' ? transaction.amount : -transaction.amount,
-          transaction_count: 1
-        });
+        existing.total_expense += transaction.amount;
       }
-    });
+      existing.transaction_count += 1;
+      existing.net_change = existing.total_income - existing.total_expense;
+    } else {
+      accountMap.set(accountId, {
+        account_id: accountId,
+        account_name: accountName,
+        account_type: accountType,
+        total_income: transaction.transaction_type === 'credit' ? transaction.amount : 0,
+        total_expense: transaction.transaction_type === 'debit' ? transaction.amount : 0,
+        net_change: transaction.transaction_type === 'credit' ? transaction.amount : -transaction.amount,
+        transaction_count: 1
+      });
+    }
+  });
 
-    return Array.from(accountMap.values())
-      .sort((a, b) => b.total_expense - a.total_expense);
-  }
-
+  return Array.from(accountMap.values())
+    .sort((a, b) => b.total_expense - a.total_expense);
+}
+  
   // Get daily spending trend
   async getDailySpending(startDate: string, endDate: string): Promise<DailySpending[]> {
     const { data: { user } } = await supabase.auth.getUser();
