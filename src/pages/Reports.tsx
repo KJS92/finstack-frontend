@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
-import AppHeader from '../components/header/AppHeader';
+import AppHeader from '../components/layout/AppHeader';  // ← Fixed path
 import { reportsService, MonthlySummary, CategoryBreakdown, AccountSummary } from '../services/reportsService';
 import { TrendingUp, Calendar, PieChart, Wallet } from 'lucide-react';
 
