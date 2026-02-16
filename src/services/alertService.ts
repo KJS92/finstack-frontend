@@ -4,8 +4,9 @@ export interface BudgetAlert {
   id: string;
   user_id: string;
   budget_id: string;
-  alertType: 'warning' | 'critical' | 'exceeded' | 'expired' | 'renewed';
+  alert_type: 'warning' | 'critical' | 'exceeded' | 'expired' | 'renewed';
   threshold?: number;
+  percentage?: number;
   message: string;
   is_read: boolean;
   created_at: string;
