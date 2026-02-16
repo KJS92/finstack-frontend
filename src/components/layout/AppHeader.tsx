@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import NotificationDropdown from '../notifications/NotificationDropdown';
-import { ..., BarChart3 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import './AppHeader.css';
 
 interface AppHeaderProps {
