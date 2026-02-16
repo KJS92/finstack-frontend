@@ -14,6 +14,7 @@ import AuthHandler from './components/AuthHandler';
 import AddTransaction from './pages/AddTransaction';
 import Categories from './pages/Categories';
 import Budgets from './pages/Budgets';
+import Reports from './pages/Reports';
 import './App.css';
 
 function App() {
@@ -67,6 +68,7 @@ function App() {
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/budgets" element={<Budgets />} />
+          <Route path="/reports" element={<Reports />} />
         </Routes>
       </div>
     </Router>
