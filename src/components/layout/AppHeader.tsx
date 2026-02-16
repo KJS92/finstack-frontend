@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import NotificationDropdown from '../notifications/NotificationDropdown';
+import { ..., BarChart3 } from 'lucide-react';
 import './AppHeader.css';
 
 interface AppHeaderProps {
@@ -30,44 +31,51 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, userEmail, activePage }) =
         <NotificationDropdown />
         
         {/* Navigation Buttons */}
-        <div className="header-nav">
-          <button 
-            onClick={() => navigate('/dashboard')} 
-            className={`nav-btn ${activePage === 'dashboard' ? 'active' : ''}`}
-          >
-            📊 Dashboard
-          </button>
-          <button 
-            onClick={() => navigate('/add-transaction')} 
-            className={`nav-btn ${activePage === 'add-transaction' ? 'active' : ''}`}
-          >
-            ➕ Add Transaction
-          </button>
-          <button 
-            onClick={() => navigate('/transactions')} 
-            className={`nav-btn ${activePage === 'transactions' ? 'active' : ''}`}
-          >
-            📋 Transactions
-          </button>
-          <button 
-            onClick={() => navigate('/budgets')} 
-            className={`nav-btn ${activePage === 'budgets' ? 'active' : ''}`}
-          >
-            💰 Budgets
-          </button>
-          <button 
-            onClick={() => navigate('/categories')} 
-            className={`nav-btn ${activePage === 'categories' ? 'active' : ''}`}
-          >
-            🏷️ Categories
-          </button>
-          <button 
-            onClick={() => navigate('/profile')} 
-            className={`nav-btn ${activePage === 'profile' ? 'active' : ''}`}
-          >
-            👤 Profile
-          </button>
-        </div>
+        {/* Navigation Buttons */}
+<div className="header-nav">
+  <button 
+    onClick={() => navigate('/dashboard')} 
+    className={`nav-btn ${activePage === 'dashboard' ? 'active' : ''}`}
+  >
+    📊 Dashboard
+  </button>
+  <button 
+    onClick={() => navigate('/add-transaction')} 
+    className={`nav-btn ${activePage === 'add-transaction' ? 'active' : ''}`}
+  >
+    ➕ Add Transaction
+  </button>
+  <button 
+    onClick={() => navigate('/transactions')} 
+    className={`nav-btn ${activePage === 'transactions' ? 'active' : ''}`}
+  >
+    📋 Transactions
+  </button>
+  <button 
+    onClick={() => navigate('/budgets')} 
+    className={`nav-btn ${activePage === 'budgets' ? 'active' : ''}`}
+  >
+    💰 Budgets
+  </button>
+  <button 
+    onClick={() => navigate('/reports')} 
+    className={`nav-btn ${activePage === 'reports' ? 'active' : ''}`}
+  >
+    📈 Reports
+  </button>
+  <button 
+    onClick={() => navigate('/categories')} 
+    className={`nav-btn ${activePage === 'categories' ? 'active' : ''}`}
+  >
+    🏷️ Categories
+  </button>
+  <button 
+    onClick={() => navigate('/profile')} 
+    className={`nav-btn ${activePage === 'profile' ? 'active' : ''}`}
+  >
+    👤 Profile
+  </button>
+</div>
         
         {/* Logout Button */}
         <button onClick={handleLogout} className="btn-logout">
