@@ -78,7 +78,7 @@ class AlertService {
   }
 
   // Create alert
-  async createAlert(
+async createAlert(
   budgetId: string,
   alertType: 'warning' | 'critical' | 'exceeded' | 'expired' | 'renewed',
   message: string,
@@ -87,20 +87,23 @@ class AlertService {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // Check if alert already exists for this budget and type
+  // Check if similar alert exists in last 24 hours
+  const oneDayAgo = new Date();
+  oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+
   const { data: existingAlerts } = await supabase
     .from('budget_alerts')
-    .select('id, is_read')
+    .select('id, is_read, created_at')
     .eq('user_id', user.id)
     .eq('budget_id', budgetId)
     .eq('alert_type', alertType)
-    .eq('message', message)
+    .gte('created_at', oneDayAgo.toISOString())
     .order('created_at', { ascending: false })
     .limit(1);
 
-  // If an unread alert already exists with same message, don't create duplicate
-  if (existingAlerts && existingAlerts.length > 0 && !existingAlerts[0].is_read) {
-    console.log('Alert already exists, skipping:', alertType, budgetId);
+  // If an alert of same type exists in last 24 hours, don't create duplicate
+  if (existingAlerts && existingAlerts.length > 0) {
+    console.log('Similar alert exists within 24h, skipping:', alertType, budgetId);
     return;
   }
 
