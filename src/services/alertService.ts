@@ -4,7 +4,7 @@ export interface BudgetAlert {
   id: string;
   user_id: string;
   budget_id: string;
-  alert_type: 'warning' | 'exceeded' | 'expired' | 'renewed';
+  alert_type: alertType: 'warning' | 'critical' | 'exceeded' | 'expired' | 'renewed';
   threshold?: number;
   message: string;
   is_read: boolean;
@@ -79,7 +79,7 @@ class AlertService {
   // Create alert
   async createAlert(
   budgetId: string,
-  alertType: 'warning' | 'critical' | 'expired' | 'renewed',
+  alertType: 'warning' | 'critical' | 'exceeded' | 'expired' | 'renewed',
   message: string,
   percentage: number | undefined
 ): Promise<void> {
