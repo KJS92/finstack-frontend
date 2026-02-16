@@ -78,44 +78,49 @@ class AlertService {
 
   // Create alert
   async createAlert(
-    budgetId: string,
-    alertType: BudgetAlert['alert_type'],
-    message: string,
-    threshold?: number
-  ): Promise<BudgetAlert> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  budgetId: string,
+  alertType: 'warning' | 'critical' | 'expired' | 'renewed',
+  message: string,
+  percentage: number | undefined
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-    // Check if similar alert already exists (avoid duplicates)
-    const { data: existing } = await supabase
-      .from('budget_alerts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('budget_id', budgetId)
-      .eq('alert_type', alertType)
-      .eq('is_read', false)
-      .maybeSingle();
+  // Check if alert already exists for this budget and type
+  const { data: existingAlerts } = await supabase
+    .from('budget_alerts')
+    .select('id, is_read')
+    .eq('user_id', user.id)
+    .eq('budget_id', budgetId)
+    .eq('alert_type', alertType)
+    .eq('message', message)
+    .order('created_at', { ascending: false })
+    .limit(1);
 
-    if (existing) {
-      console.log('Alert already exists, skipping duplicate');
-      return existing;
-    }
-
-    const { data, error } = await supabase
-      .from('budget_alerts')
-      .insert({
-        user_id: user.id,
-        budget_id: budgetId,
-        alert_type: alertType,
-        message,
-        threshold
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+  // If an unread alert already exists with same message, don't create duplicate
+  if (existingAlerts && existingAlerts.length > 0 && !existingAlerts[0].is_read) {
+    console.log('Alert already exists, skipping:', alertType, budgetId);
+    return;
   }
+
+  // Create new alert
+  const { error } = await supabase
+    .from('budget_alerts')
+    .insert({
+      user_id: user.id,
+      budget_id: budgetId,
+      alert_type: alertType,
+      message,
+      percentage,
+      is_read: false
+    });
+
+  if (error) {
+    console.error('Error creating alert:', error);
+  } else {
+    console.log('Created new alert:', alertType, budgetId);
+  }
+}
 
   // Mark alert as read
   async markAsRead(alertId: string): Promise<void> {
