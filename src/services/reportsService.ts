@@ -154,13 +154,16 @@ async getAccountSummary(startDate: string, endDate: string): Promise<AccountSumm
 
   if (txError) throw txError;
 
-  // Then get all accounts - FIXED COLUMN NAME
+  // Then get all accounts - USING CORRECT COLUMN NAMES
   const { data: accounts, error: accError } = await supabase
     .from('accounts')
-    .select('id, account_number, account_type')  // Changed from account_name to account_number
+    .select('id, name, type, account_number')  // Changed to correct columns
     .eq('user_id', user.id);
 
-  if (accError) throw accError;
+  if (accError) {
+    console.error('Account fetch error:', accError);
+    throw accError;
+  }
 
   // Create a map of accounts
   const accountMapById = new Map(accounts?.map(acc => [acc.id, acc]) || []);
@@ -171,8 +174,8 @@ async getAccountSummary(startDate: string, endDate: string): Promise<AccountSumm
   transactions?.forEach((transaction: any) => {
     const accountId = transaction.account_id || 'unknown';
     const account = accountMapById.get(accountId);
-    const accountName = account?.account_number || 'Unknown Account';  // Changed to account_number
-    const accountType = account?.account_type || 'unknown';
+    const accountName = account?.name || account?.account_number || 'Unknown Account';  // Use 'name' column
+    const accountType = account?.type || 'unknown';  // Use 'type' column
 
     if (accountMap.has(accountId)) {
       const existing = accountMap.get(accountId)!;
