@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import AppHeader from '../components/layout/AppHeader';
 import { receivablesPayablesService, ReceivablePayable } from '../services/receivablesPayablesService';
-import { Plus, TrendingUp, TrendingDown, AlertCircle, Calendar, User, Phone, Edit, Trash2, DollarSign } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, AlertCircle, Calendar, User, Phone, Edit, Trash2 } from 'lucide-react';
 
 const ReceivablesPayables: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -20,6 +20,7 @@ const ReceivablesPayables: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ReceivablePayable | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -74,7 +75,7 @@ const ReceivablesPayables: React.FC = () => {
       const paidAmount = parseFloat(formData.paid_amount);
       const remainingAmount = totalAmount - paidAmount;
 
-      await receivablesPayablesService.create({
+      const entryData = {
         type: activeTab,
         title: formData.title,
         description: formData.description || undefined,
@@ -85,15 +86,25 @@ const ReceivablesPayables: React.FC = () => {
         remaining_amount: remainingAmount,
         due_date: formData.due_date || undefined,
         category: formData.category || undefined,
-        status: paidAmount >= totalAmount ? 'completed' : paidAmount > 0 ? 'partial' : 'pending'
-      });
+        status: (paidAmount >= totalAmount ? 'completed' : paidAmount > 0 ? 'partial' : 'pending') as 'completed' | 'partial' | 'pending'
+      };
+
+      if (editMode && selectedEntry) {
+        // Update existing entry
+        await receivablesPayablesService.update(selectedEntry.id, entryData);
+      } else {
+        // Create new entry
+        await receivablesPayablesService.create(entryData);
+      }
 
       setShowAddModal(false);
+      setSelectedEntry(null);
+      setEditMode(false);
       resetForm();
       loadData();
     } catch (error) {
-      console.error('Error creating entry:', error);
-      alert('Failed to create entry');
+      console.error('Error saving entry:', error);
+      alert('Failed to save entry');
     }
   };
 
@@ -118,6 +129,22 @@ const ReceivablesPayables: React.FC = () => {
       console.error('Error adding payment:', error);
       alert('Failed to add payment');
     }
+  };
+
+  const handleEdit = (entry: ReceivablePayable) => {
+    setFormData({
+      title: entry.title,
+      description: entry.description || '',
+      contact_name: entry.contact_name || '',
+      contact_phone: entry.contact_phone || '',
+      total_amount: entry.total_amount.toString(),
+      paid_amount: entry.paid_amount.toString(),
+      due_date: entry.due_date || '',
+      category: entry.category || ''
+    });
+    setSelectedEntry(entry);
+    setEditMode(true);
+    setShowAddModal(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -155,10 +182,10 @@ const ReceivablesPayables: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'green';
-      case 'partial': return 'orange';
-      case 'overdue': return 'red';
-      default: return 'blue';
+      case 'completed': return '#16a34a';
+      case 'partial': return '#ea580c';
+      case 'overdue': return '#dc2626';
+      default: return '#2563eb';
     }
   };
 
@@ -249,7 +276,12 @@ const ReceivablesPayables: React.FC = () => {
 
         {/* Add Button */}
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setEditMode(false);
+            setSelectedEntry(null);
+            resetForm();
+            setShowAddModal(true);
+          }}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -377,6 +409,23 @@ const ReceivablesPayables: React.FC = () => {
                     </button>
                   )}
                   <button
+                    onClick={() => handleEdit(entry)}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#2563eb',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Edit size={16} />
+                  </button>
+                  <button
                     onClick={() => handleDelete(entry.id)}
                     style={{
                       padding: '8px 16px',
@@ -385,7 +434,10 @@ const ReceivablesPayables: React.FC = () => {
                       border: 'none',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '14px'
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
                     }}
                   >
                     <Trash2 size={16} />
@@ -396,7 +448,7 @@ const ReceivablesPayables: React.FC = () => {
           </div>
         )}
 
-        {/* Add Modal */}
+        {/* Add/Edit Modal */}
         {showAddModal && (
           <div style={{
             position: 'fixed',
@@ -419,7 +471,9 @@ const ReceivablesPayables: React.FC = () => {
               maxHeight: '90vh',
               overflow: 'auto'
             }}>
-              <h2 style={{ marginTop: 0 }}>Add {activeTab === 'receivable' ? 'Receivable' : 'Payable'}</h2>
+              <h2 style={{ marginTop: 0 }}>
+                {editMode ? 'Edit' : 'Add'} {activeTab === 'receivable' ? 'Receivable' : 'Payable'}
+              </h2>
               <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Title *</label>
@@ -517,7 +571,12 @@ const ReceivablesPayables: React.FC = () => {
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                   <button
                     type="button"
-                    onClick={() => { setShowAddModal(false); resetForm(); }}
+                    onClick={() => { 
+                      setShowAddModal(false); 
+                      setSelectedEntry(null);
+                      setEditMode(false);
+                      resetForm(); 
+                    }}
                     style={{ padding: '10px 20px', background: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                   >
                     Cancel
@@ -526,7 +585,7 @@ const ReceivablesPayables: React.FC = () => {
                     type="submit"
                     style={{ padding: '10px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                   >
-                    Create
+                    {editMode ? 'Update' : 'Create'}
                   </button>
                 </div>
               </form>
