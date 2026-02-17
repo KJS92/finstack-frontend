@@ -121,7 +121,7 @@ const ReceivablesPayables: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this entry?')) return;
+    if (!window.confirm('Are you sure you want to delete this entry?')) return;
     
     try {
       await receivablesPayablesService.delete(id);
