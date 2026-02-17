@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import AppHeader from '../components/layout/AppHeader';
-import { reportsService, MonthlySummary, CategoryBreakdown, AccountSummary } from '../services/reportsService';
-import { TrendingUp, Calendar, PieChart, Wallet } from 'lucide-react';
+import { reportsService, MonthlySummary, CategoryBreakdown, AccountSummary, DailySpending } from '../services/reportsService';
+import { TrendingUp, Calendar, PieChart, Wallet, TrendingDown } from 'lucide-react';
+import CategoryPieChart from '../components/charts/CategoryPieChart';
+import SpendingTrendChart from '../components/charts/SpendingTrendChart';
 import './Reports.css';
 
 const Reports: React.FC = () => {
@@ -10,6 +12,7 @@ const Reports: React.FC = () => {
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
   const [accountSummary, setAccountSummary] = useState<AccountSummary[]>([]);
+  const [dailySpending, setDailySpending] = useState<DailySpending[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [user, setUser] = useState<any>(null);
@@ -33,21 +36,30 @@ const Reports: React.FC = () => {
       const startDate = new Date(selectedYear, selectedMonth - 1, 1).toISOString().split('T')[0];
       const endDate = new Date(selectedYear, selectedMonth, 0).toISOString().split('T')[0];
 
-      const [summary, categories, accounts] = await Promise.all([
+      const [summary, categories, accounts, spending] = await Promise.all([
         reportsService.getMonthlySummary(selectedYear, selectedMonth),
         reportsService.getCategoryBreakdown(startDate, endDate),
-        reportsService.getAccountSummary(startDate, endDate)
+        reportsService.getAccountSummary(startDate, endDate),
+        reportsService.getDailySpending(startDate, endDate)
       ]);
 
       setMonthlySummary(summary);
       setCategoryBreakdown(categories);
       setAccountSummary(accounts);
+      setDailySpending(spending);
     } catch (error) {
       console.error('Error loading reports:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Transform category data for pie chart
+  const categoryChartData = categoryBreakdown.map(cat => ({
+    name: cat.category_name,
+    value: cat.total_amount,
+    color: cat.category_color
+  }));
 
   if (!user) {
     return <div className="loading-container">Loading...</div>;
@@ -138,7 +150,25 @@ const Reports: React.FC = () => {
               </div>
             )}
 
-            {/* Category Breakdown */}
+            {/* Spending Trend Chart */}
+            <div className="section-card">
+              <div className="section-header">
+                <TrendingDown size={20} />
+                <h2>Spending Trend</h2>
+              </div>
+              <SpendingTrendChart data={dailySpending} />
+            </div>
+
+            {/* Category Pie Chart */}
+            <div className="section-card">
+              <div className="section-header">
+                <PieChart size={20} />
+                <h2>Category Distribution</h2>
+              </div>
+              <CategoryPieChart data={categoryChartData} />
+            </div>
+
+            {/* Category Breakdown List */}
             <div className="section-card">
               <div className="section-header">
                 <PieChart size={20} />
