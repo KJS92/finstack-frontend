@@ -15,7 +15,8 @@
     "xlsx": "^0.18.5",
     "papaparse": "^5.4.1",
     "lucide-react": "^0.344.0",
-    "@types/papaparse": "^5.3.14"
+    "@types/papaparse": "^5.3.14",
+    "recharts": "^2.x.x",
   },
   "scripts": {
     "start": "react-scripts start",
