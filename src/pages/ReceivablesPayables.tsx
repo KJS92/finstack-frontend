@@ -372,7 +372,7 @@ const ReceivablesPayables: React.FC = () => {
                         gap: '6px'
                       }}
                     >
-                      <DollarSign size={16} />
+                      <span style={{ fontSize: '16px', fontWeight: 'bold' }}>₹</span>
                       Add Payment
                     </button>
                   )}
