@@ -56,14 +56,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, userEmail, activePage }) =
     className={`nav-btn ${activePage === 'budgets' ? 'active' : ''}`}
   >
     <button 
-  onClick={() => navigate('/receivables')} 
-  className={`nav-btn ${activePage === 'receivables' ? 'active' : ''}`}
->
-  💸 Receivables
-</button>
-    💰 Budgets
-  </button>
-  <button 
+      onClick={() => navigate('/receivables')} 
+      className={`nav-btn ${activePage === 'receivables' ? 'active' : ''}`}
+    >
+    💸 Receivables
+    </button>
+    <button 
     onClick={() => navigate('/reports')} 
     className={`nav-btn ${activePage === 'reports' ? 'active' : ''}`}
   >
