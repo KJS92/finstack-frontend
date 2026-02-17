@@ -15,7 +15,9 @@ import AddTransaction from './pages/AddTransaction';
 import Categories from './pages/Categories';
 import Budgets from './pages/Budgets';
 import Reports from './pages/Reports';
+import ReceivablesPayables from './pages/ReceivablesPayables';
 import './App.css';
+
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,7 @@ function App() {
           <Route path="/categories" element={<Categories />} />
           <Route path="/budgets" element={<Budgets />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/receivables" element={<ReceivablesPayables />} />
         </Routes>
       </div>
     </Router>
