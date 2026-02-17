@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 import AppHeader from '../components/layout/AppHeader';  // ← Fixed path
 import { reportsService, MonthlySummary, CategoryBreakdown, AccountSummary } from '../services/reportsService';
 import { TrendingUp, Calendar, PieChart, Wallet } from 'lucide-react';
+import './Reports.css';
 
 const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
