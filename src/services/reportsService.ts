@@ -140,7 +140,6 @@ async getCategoryBreakdown(startDate: string, endDate: string): Promise<Category
 }
 
   // Get account-wise summary
-  // Get account-wise summary
 async getAccountSummary(startDate: string, endDate: string): Promise<AccountSummary[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -155,10 +154,10 @@ async getAccountSummary(startDate: string, endDate: string): Promise<AccountSumm
 
   if (txError) throw txError;
 
-  // Then get all accounts
+  // Then get all accounts - FIXED COLUMN NAME
   const { data: accounts, error: accError } = await supabase
     .from('accounts')
-    .select('id, account_name, account_type')
+    .select('id, account_number, account_type')  // Changed from account_name to account_number
     .eq('user_id', user.id);
 
   if (accError) throw accError;
@@ -172,7 +171,7 @@ async getAccountSummary(startDate: string, endDate: string): Promise<AccountSumm
   transactions?.forEach((transaction: any) => {
     const accountId = transaction.account_id || 'unknown';
     const account = accountMapById.get(accountId);
-    const accountName = account?.account_name || 'Unknown Account';
+    const accountName = account?.account_number || 'Unknown Account';  // Changed to account_number
     const accountType = account?.account_type || 'unknown';
 
     if (accountMap.has(accountId)) {
