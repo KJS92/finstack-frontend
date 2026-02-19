@@ -9,13 +9,19 @@ const Assets: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'investment' | 'insurance'>('investment');
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [summary, setSummary] = useState({
-    totalInvestments: 0,
-    totalInsurance: 0,
-    totalNetWorth: 0,
-    totalGainLoss: 0,
-    upcomingMaturities: [] as Asset[]
-  });
+ const [summary, setSummary] = useState({
+  totalInvestments: 0,
+  totalInsurance: 0,
+  totalBankBalance: 0,
+  totalReceivables: 0,
+  totalPayables: 0,
+  totalAssets: 0,
+  totalLiabilities: 0,
+  totalNetWorth: 0,
+  totalGainLoss: 0,
+  upcomingMaturities: [] as Asset[]
+});
+
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -186,54 +192,101 @@ const Assets: React.FC = () => {
       <div className="page-container">
 
         {/* Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '14px', color: '#15803d', fontWeight: 500 }}>Total Investments</span>
-              <TrendingUp size={20} color="#16a34a" />
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#14532d' }}>
-              ₹{summary.totalInvestments.toLocaleString('en-IN')}
-            </div>
-          </div>
+        {/* Summary Cards Row 1 */}
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '20px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '14px', color: '#15803d', fontWeight: 500 }}>Investments</span>
+      <TrendingUp size={20} color="#16a34a" />
+    </div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#14532d' }}>
+      ₹{summary.totalInvestments.toLocaleString('en-IN')}
+    </div>
+  </div>
 
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '14px', color: '#1d4ed8', fontWeight: 500 }}>Total Insurance</span>
-              <Shield size={20} color="#2563eb" />
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a' }}>
-              ₹{summary.totalInsurance.toLocaleString('en-IN')}
-            </div>
-          </div>
+  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '20px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '14px', color: '#1d4ed8', fontWeight: 500 }}>Insurance</span>
+      <Shield size={20} color="#2563eb" />
+    </div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a' }}>
+      ₹{summary.totalInsurance.toLocaleString('en-IN')}
+    </div>
+  </div>
 
-          <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '14px', color: '#7e22ce', fontWeight: 500 }}>Net Worth</span>
-              <span style={{ fontSize: '20px' }}>💎</span>
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#581c87' }}>
-              ₹{summary.totalNetWorth.toLocaleString('en-IN')}
-            </div>
-          </div>
+  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '20px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '14px', color: '#15803d', fontWeight: 500 }}>Bank Balance</span>
+      <span style={{ fontSize: '20px' }}>🏦</span>
+    </div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#14532d' }}>
+      ₹{summary.totalBankBalance.toLocaleString('en-IN')}
+    </div>
+  </div>
 
-          <div style={{
-            background: summary.totalGainLoss >= 0 ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${summary.totalGainLoss >= 0 ? '#bbf7d0' : '#fecaca'}`,
-            borderRadius: '12px',
-            padding: '20px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '14px', color: summary.totalGainLoss >= 0 ? '#15803d' : '#b91c1c', fontWeight: 500 }}>
-                Total Gain / Loss
-              </span>
-              <span style={{ fontSize: '20px' }}>{summary.totalGainLoss >= 0 ? '📈' : '📉'}</span>
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: summary.totalGainLoss >= 0 ? '#14532d' : '#7f1d1d' }}>
-              {summary.totalGainLoss >= 0 ? '+' : ''}₹{summary.totalGainLoss.toLocaleString('en-IN')}
-            </div>
-          </div>
-        </div>
+  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '20px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '14px', color: '#15803d', fontWeight: 500 }}>Receivables</span>
+      <span style={{ fontSize: '20px' }}>📥</span>
+    </div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#14532d' }}>
+      ₹{summary.totalReceivables.toLocaleString('en-IN')}
+    </div>
+  </div>
+</div>
+
+{/* Summary Cards Row 2 */}
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '20px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '14px', color: '#b91c1c', fontWeight: 500 }}>Payables</span>
+      <span style={{ fontSize: '20px' }}>📤</span>
+    </div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7f1d1d' }}>
+      ₹{summary.totalPayables.toLocaleString('en-IN')}
+    </div>
+  </div>
+
+  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '20px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '14px', color: '#b91c1c', fontWeight: 500 }}>Total Liabilities</span>
+      <span style={{ fontSize: '20px' }}>⚠️</span>
+    </div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7f1d1d' }}>
+      ₹{summary.totalLiabilities.toLocaleString('en-IN')}
+    </div>
+  </div>
+
+  <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '20px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '14px', color: '#7e22ce', fontWeight: 500 }}>Total Assets</span>
+      <span style={{ fontSize: '20px' }}>💼</span>
+    </div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#581c87' }}>
+      ₹{summary.totalAssets.toLocaleString('en-IN')}
+    </div>
+  </div>
+
+  <div style={{
+    background: summary.totalNetWorth >= 0 ? '#faf5ff' : '#fef2f2',
+    border: `1px solid ${summary.totalNetWorth >= 0 ? '#e9d5ff' : '#fecaca'}`,
+    borderRadius: '12px',
+    padding: '20px'
+  }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '14px', color: summary.totalNetWorth >= 0 ? '#7e22ce' : '#b91c1c', fontWeight: 500 }}>
+        Net Worth
+      </span>
+      <span style={{ fontSize: '20px' }}>💎</span>
+    </div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: summary.totalNetWorth >= 0 ? '#581c87' : '#7f1d1d' }}>
+      ₹{summary.totalNetWorth.toLocaleString('en-IN')}
+    </div>
+    <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+      Assets - Liabilities
+    </div>
+  </div>
+</div>
 
         {/* Upcoming Maturities Alert */}
         {summary.upcomingMaturities.length > 0 && (
