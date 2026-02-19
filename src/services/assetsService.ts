@@ -180,16 +180,14 @@ class AssetsService {
 
   // ── Bank Balances ──────────────────────────────────────
   accountsResult.data?.forEach(account => {
-    if (account.type === 'credit_card') {
-      // Credit card outstanding is a liability
-      if (account.balance < 0) {
-        summary.totalLiabilities += Math.abs(account.balance);
-      }
-    } else {
-      // Bank accounts, wallets, UPI are assets
-      summary.totalBankBalance += account.balance || 0;
-    }
-  });
+  if (account.type === 'credit_card') {
+    // Credit card balance is always a liability (stored as positive)
+    summary.totalLiabilities += account.balance || 0;
+  } else {
+    // Savings, bank, wallet, UPI = assets
+    summary.totalBankBalance += account.balance || 0;
+  }
+});
 
   // ── Receivables & Payables ─────────────────────────────
   rpResult.data?.forEach(entry => {
