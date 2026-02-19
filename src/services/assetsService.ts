@@ -27,6 +27,11 @@ export interface Asset {
 export interface AssetSummary {
   totalInvestments: number;
   totalInsurance: number;
+  totalBankBalance: number;
+  totalReceivables: number;
+  totalPayables: number;
+  totalAssets: number;
+  totalLiabilities: number;
   totalNetWorth: number;
   totalGainLoss: number;
   upcomingMaturities: Asset[];
@@ -107,52 +112,108 @@ class AssetsService {
 
   // ─── GET SUMMARY ───────────────────────────────────────
   async getSummary(): Promise<AssetSummary> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase
+  // Fetch all data in parallel
+  const [assetsResult, accountsResult, rpResult] = await Promise.all([
+    supabase
       .from('assets')
       .select('*')
       .eq('user_id', user.id)
-      .eq('is_active', true);
+      .eq('is_active', true),
 
-    if (error) throw error;
+    supabase
+      .from('accounts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_active', true),
 
-    const today = new Date();
-    const reminderDate = new Date();
-    reminderDate.setDate(today.getDate() + 30);
+    supabase
+      .from('receivables_payables')
+      .select('*')
+      .eq('user_id', user.id)
+      .neq('status', 'completed')
+      .eq('is_recurring', false)
+  ]);
 
-    const summary: AssetSummary = {
-      totalInvestments: 0,
-      totalInsurance: 0,
-      totalNetWorth: 0,
-      totalGainLoss: 0,
-      upcomingMaturities: []
-    };
+  if (assetsResult.error) throw assetsResult.error;
+  if (accountsResult.error) throw accountsResult.error;
+  if (rpResult.error) throw rpResult.error;
 
-    data?.forEach(asset => {
-      if (asset.type === 'investment') {
-        summary.totalInvestments += asset.current_value;
-        if (asset.invested_amount) {
-          summary.totalGainLoss += asset.current_value - asset.invested_amount;
-        }
-      } else {
-        summary.totalInsurance += asset.current_value;
+  const today = new Date();
+  const reminderDate = new Date();
+  reminderDate.setDate(today.getDate() + 30);
+
+  const summary: AssetSummary = {
+    totalInvestments: 0,
+    totalInsurance: 0,
+    totalBankBalance: 0,
+    totalReceivables: 0,
+    totalPayables: 0,
+    totalAssets: 0,
+    totalLiabilities: 0,
+    totalNetWorth: 0,
+    totalGainLoss: 0,
+    upcomingMaturities: []
+  };
+
+  // ── Assets (Investments & Insurance) ──────────────────
+  assetsResult.data?.forEach(asset => {
+    if (asset.type === 'investment') {
+      summary.totalInvestments += asset.current_value;
+      if (asset.invested_amount) {
+        summary.totalGainLoss += asset.current_value - asset.invested_amount;
       }
+    } else {
+      summary.totalInsurance += asset.current_value;
+    }
 
-      // Check upcoming maturities within 30 days
-      if (asset.maturity_date) {
-        const maturityDate = new Date(asset.maturity_date);
-        if (maturityDate >= today && maturityDate <= reminderDate) {
-          summary.upcomingMaturities.push(asset);
-        }
+    // Upcoming maturities within 30 days
+    if (asset.maturity_date) {
+      const maturityDate = new Date(asset.maturity_date);
+      if (maturityDate >= today && maturityDate <= reminderDate) {
+        summary.upcomingMaturities.push(asset);
       }
-    });
+    }
+  });
 
-    summary.totalNetWorth = summary.totalInvestments + summary.totalInsurance;
-    return summary;
-  }
+  // ── Bank Balances ──────────────────────────────────────
+  accountsResult.data?.forEach(account => {
+    if (account.type === 'credit_card') {
+      // Credit card outstanding is a liability
+      if (account.balance < 0) {
+        summary.totalLiabilities += Math.abs(account.balance);
+      }
+    } else {
+      // Bank accounts, wallets, UPI are assets
+      summary.totalBankBalance += account.balance || 0;
+    }
+  });
 
+  // ── Receivables & Payables ─────────────────────────────
+  rpResult.data?.forEach(entry => {
+    if (entry.type === 'receivable') {
+      summary.totalReceivables += entry.remaining_amount;
+    } else {
+      summary.totalPayables += entry.remaining_amount;
+    }
+  });
+
+  // ── Final Calculations ─────────────────────────────────
+  summary.totalAssets =
+    summary.totalInvestments +
+    summary.totalInsurance +
+    summary.totalBankBalance +
+    summary.totalReceivables;
+
+  summary.totalLiabilities += summary.totalPayables;
+
+  summary.totalNetWorth = summary.totalAssets - summary.totalLiabilities;
+
+  return summary;
+}
+  
   // ─── GET CATEGORY LABEL ────────────────────────────────
   getCategoryLabel(category: string): string {
     const labels: Record<string, string> = {
