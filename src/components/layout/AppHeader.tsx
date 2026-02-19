@@ -75,6 +75,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, userEmail, activePage }) =
 >
   🏷️ Categories
 </button>
+  <button
+  onClick={() => navigate('/assets')}
+  className={`nav-btn ${activePage === 'assets' ? 'active' : ''}`}
+>
+  💎 Assets
+</button>
 <button 
   onClick={() => navigate('/profile')} 
   className={`nav-btn ${activePage === 'profile' ? 'active' : ''}`}
