@@ -30,7 +30,11 @@ const ReceivablesPayables: React.FC = () => {
     total_amount: '',
     paid_amount: '0',
     due_date: '',
-    category: ''
+    category: '',
+    is_recurring: false,
+    recurring_frequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+    recurring_day: '',
+    recurring_end_date: ''
   });
 
   const [paymentData, setPaymentData] = useState({
@@ -53,7 +57,8 @@ const ReceivablesPayables: React.FC = () => {
     try {
       setLoading(true);
       await receivablesPayablesService.updateOverdueStatus();
-      
+      await receivablesPayablesService.generateRecurringEntries();
+
       const [entriesData, summaryData] = await Promise.all([
         receivablesPayablesService.getByType(activeTab),
         receivablesPayablesService.getSummary()
@@ -76,31 +81,28 @@ const ReceivablesPayables: React.FC = () => {
       const remainingAmount = totalAmount - paidAmount;
 
       const entryData = {
-  type: activeTab,
-  title: formData.title,
-  description: formData.description || undefined,
-  contact_name: formData.contact_name || undefined,
-  contact_phone: formData.contact_phone || undefined,
-  total_amount: totalAmount,
-  paid_amount: paidAmount,
-  remaining_amount: remainingAmount,
-  due_date: formData.due_date || undefined,
-  category: formData.category || undefined,
-  status: (paidAmount >= totalAmount ? 'completed' : paidAmount > 0 ? 'partial' : 'pending') as 'completed' | 'partial' | 'pending',
-  is_recurring: false,
-  recurring_frequency: undefined,
-  recurring_day: undefined,
-  recurring_end_date: undefined,
-  last_generated_date: undefined,
-  parent_recurring_id: undefined
-};
-
+        type: activeTab,
+        title: formData.title,
+        description: formData.description || undefined,
+        contact_name: formData.contact_name || undefined,
+        contact_phone: formData.contact_phone || undefined,
+        total_amount: totalAmount,
+        paid_amount: paidAmount,
+        remaining_amount: remainingAmount,
+        due_date: formData.due_date || undefined,
+        category: formData.category || undefined,
+        status: (paidAmount >= totalAmount ? 'completed' : paidAmount > 0 ? 'partial' : 'pending') as 'completed' | 'partial' | 'pending',
+        is_recurring: formData.is_recurring,
+        recurring_frequency: formData.is_recurring ? formData.recurring_frequency : undefined,
+        recurring_day: formData.is_recurring && formData.recurring_day ? parseInt(formData.recurring_day) : undefined,
+        recurring_end_date: formData.is_recurring && formData.recurring_end_date ? formData.recurring_end_date : undefined,
+        last_generated_date: undefined,
+        parent_recurring_id: undefined
+      };
 
       if (editMode && selectedEntry) {
-        // Update existing entry
         await receivablesPayablesService.update(selectedEntry.id, entryData);
       } else {
-        // Create new entry
         await receivablesPayablesService.create(entryData);
       }
 
@@ -146,8 +148,12 @@ const ReceivablesPayables: React.FC = () => {
       contact_phone: entry.contact_phone || '',
       total_amount: entry.total_amount.toString(),
       paid_amount: entry.paid_amount.toString(),
-      due_date: entry.due_date || '',
-      category: entry.category || ''
+      due_date: entry.due_date ? entry.due_date.split('T')[0] : '',
+      category: entry.category || '',
+      is_recurring: entry.is_recurring || false,
+      recurring_frequency: entry.recurring_frequency || 'monthly',
+      recurring_day: entry.recurring_day?.toString() || '',
+      recurring_end_date: entry.recurring_end_date ? entry.recurring_end_date.split('T')[0] : ''
     });
     setSelectedEntry(entry);
     setEditMode(true);
@@ -156,7 +162,7 @@ const ReceivablesPayables: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this entry?')) return;
-    
+
     try {
       await receivablesPayablesService.delete(id);
       loadData();
@@ -175,7 +181,11 @@ const ReceivablesPayables: React.FC = () => {
       total_amount: '',
       paid_amount: '0',
       due_date: '',
-      category: ''
+      category: '',
+      is_recurring: false,
+      recurring_frequency: 'monthly',
+      recurring_day: '',
+      recurring_end_date: ''
     });
   };
 
@@ -212,10 +222,10 @@ const ReceivablesPayables: React.FC = () => {
   return (
     <div>
       <AppHeader title="Receivables & Payables" userEmail={user.email || ''} activePage="receivables" />
-      
+
       <div className="page-container">
         {/* Summary Cards */}
-        <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
           <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '14px', color: '#15803d', fontWeight: 500 }}>To Receive</span>
@@ -328,10 +338,37 @@ const ReceivablesPayables: React.FC = () => {
                   borderLeft: `4px solid ${getStatusColor(entry.status)}`
                 }}
               >
+                {/* Card Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
                   <div>
                     <h3 style={{ fontSize: '18px', fontWeight: 600, margin: '0 0 4px 0' }}>
                       {entry.title}
+                      {entry.is_recurring && (
+                        <span style={{
+                          marginLeft: '8px',
+                          fontSize: '11px',
+                          background: '#dbeafe',
+                          color: '#1d4ed8',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontWeight: 500
+                        }}>
+                          🔄 Recurring
+                        </span>
+                      )}
+                      {entry.parent_recurring_id && (
+                        <span style={{
+                          marginLeft: '8px',
+                          fontSize: '11px',
+                          background: '#f0fdf4',
+                          color: '#15803d',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontWeight: 500
+                        }}>
+                          ↩ Auto-generated
+                        </span>
+                      )}
                     </h3>
                     {entry.description && (
                       <p style={{ fontSize: '14px', color: '#666', margin: '0 0 8px 0' }}>
@@ -353,6 +390,7 @@ const ReceivablesPayables: React.FC = () => {
                   </span>
                 </div>
 
+                {/* Contact & Due Date */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                   {entry.contact_name && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: '#666' }}>
@@ -372,8 +410,14 @@ const ReceivablesPayables: React.FC = () => {
                       {new Date(entry.due_date).toLocaleDateString('en-IN')}
                     </div>
                   )}
+                  {entry.is_recurring && entry.recurring_frequency && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: '#1d4ed8' }}>
+                      🔄 {entry.recurring_frequency.charAt(0).toUpperCase() + entry.recurring_frequency.slice(1)}
+                    </div>
+                  )}
                 </div>
 
+                {/* Amount Summary */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#f9fafb', borderRadius: '8px', marginBottom: '12px' }}>
                   <div>
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Total Amount</div>
@@ -389,6 +433,7 @@ const ReceivablesPayables: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Action Buttons */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {entry.status !== 'completed' && (
                     <button
@@ -459,10 +504,7 @@ const ReceivablesPayables: React.FC = () => {
         {showAddModal && (
           <div style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.5)',
             display: 'flex',
             alignItems: 'center',
@@ -482,6 +524,7 @@ const ReceivablesPayables: React.FC = () => {
                 {editMode ? 'Edit' : 'Add'} {activeTab === 'receivable' ? 'Receivable' : 'Payable'}
               </h2>
               <form onSubmit={handleSubmit}>
+                {/* Title */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Title *</label>
                   <input
@@ -493,6 +536,7 @@ const ReceivablesPayables: React.FC = () => {
                   />
                 </div>
 
+                {/* Description */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Description</label>
                   <textarea
@@ -503,6 +547,7 @@ const ReceivablesPayables: React.FC = () => {
                   />
                 </div>
 
+                {/* Contact */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Contact Name</label>
@@ -513,7 +558,6 @@ const ReceivablesPayables: React.FC = () => {
                       style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '6px' }}
                     />
                   </div>
-
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Contact Phone</label>
                     <input
@@ -525,6 +569,7 @@ const ReceivablesPayables: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Amounts */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Total Amount *</label>
@@ -538,7 +583,6 @@ const ReceivablesPayables: React.FC = () => {
                       style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '6px' }}
                     />
                   </div>
-
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Paid Amount</label>
                     <input
@@ -552,6 +596,7 @@ const ReceivablesPayables: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Due Date & Category */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Due Date</label>
@@ -562,7 +607,6 @@ const ReceivablesPayables: React.FC = () => {
                       style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '6px' }}
                     />
                   </div>
-
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Category</label>
                     <input
@@ -575,14 +619,73 @@ const ReceivablesPayables: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Recurring Toggle */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.is_recurring}
+                      onChange={(e) => setFormData({ ...formData, is_recurring: e.target.checked })}
+                      style={{ width: '16px', height: '16px' }}
+                    />
+                    <span style={{ fontSize: '14px', fontWeight: 500 }}>🔄 Recurring Entry</span>
+                  </label>
+                </div>
+
+                {/* Recurring Options */}
+                {formData.is_recurring && (
+                  <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Frequency *</label>
+                        <select
+                          value={formData.recurring_frequency}
+                          onChange={(e) => setFormData({ ...formData, recurring_frequency: e.target.value as any })}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '6px' }}
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Quarterly</option>
+                          <option value="yearly">Yearly</option>
+                        </select>
+                      </div>
+                      {(formData.recurring_frequency === 'monthly' || formData.recurring_frequency === 'quarterly') && (
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>Day of Month</label>
+                          <input
+                            type="number"
+                            value={formData.recurring_day}
+                            onChange={(e) => setFormData({ ...formData, recurring_day: e.target.value })}
+                            min="1"
+                            max="31"
+                            placeholder="e.g. 5"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '6px' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 }}>End Date (Optional)</label>
+                      <input
+                        type="date"
+                        value={formData.recurring_end_date}
+                        onChange={(e) => setFormData({ ...formData, recurring_end_date: e.target.value })}
+                        style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '6px' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Buttons */}
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                   <button
                     type="button"
-                    onClick={() => { 
-                      setShowAddModal(false); 
+                    onClick={() => {
+                      setShowAddModal(false);
                       setSelectedEntry(null);
                       setEditMode(false);
-                      resetForm(); 
+                      resetForm();
                     }}
                     style={{ padding: '10px 20px', background: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                   >
@@ -604,10 +707,7 @@ const ReceivablesPayables: React.FC = () => {
         {showPaymentModal && selectedEntry && (
           <div style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.5)',
             display: 'flex',
             alignItems: 'center',
@@ -664,7 +764,11 @@ const ReceivablesPayables: React.FC = () => {
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                   <button
                     type="button"
-                    onClick={() => { setShowPaymentModal(false); setSelectedEntry(null); resetPaymentForm(); }}
+                    onClick={() => {
+                      setShowPaymentModal(false);
+                      setSelectedEntry(null);
+                      resetPaymentForm();
+                    }}
                     style={{ padding: '10px 20px', background: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                   >
                     Cancel
