@@ -16,6 +16,7 @@ import Categories from './pages/Categories';
 import Budgets from './pages/Budgets';
 import Reports from './pages/Reports';
 import ReceivablesPayables from './pages/ReceivablesPayables';
+import Assets from './pages/Assets';
 import './App.css';
 
 
@@ -72,6 +73,7 @@ function App() {
           <Route path="/budgets" element={<Budgets />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/receivables" element={<ReceivablesPayables />} />
+          <Route path="/assets" element={<Assets />} />
         </Routes>
       </div>
     </Router>
