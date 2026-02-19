@@ -76,18 +76,25 @@ const ReceivablesPayables: React.FC = () => {
       const remainingAmount = totalAmount - paidAmount;
 
       const entryData = {
-        type: activeTab,
-        title: formData.title,
-        description: formData.description || undefined,
-        contact_name: formData.contact_name || undefined,
-        contact_phone: formData.contact_phone || undefined,
-        total_amount: totalAmount,
-        paid_amount: paidAmount,
-        remaining_amount: remainingAmount,
-        due_date: formData.due_date || undefined,
-        category: formData.category || undefined,
-        status: (paidAmount >= totalAmount ? 'completed' : paidAmount > 0 ? 'partial' : 'pending') as 'completed' | 'partial' | 'pending'
-      };
+  type: activeTab,
+  title: formData.title,
+  description: formData.description || undefined,
+  contact_name: formData.contact_name || undefined,
+  contact_phone: formData.contact_phone || undefined,
+  total_amount: totalAmount,
+  paid_amount: paidAmount,
+  remaining_amount: remainingAmount,
+  due_date: formData.due_date || undefined,
+  category: formData.category || undefined,
+  status: (paidAmount >= totalAmount ? 'completed' : paidAmount > 0 ? 'partial' : 'pending') as 'completed' | 'partial' | 'pending',
+  is_recurring: false,
+  recurring_frequency: undefined,
+  recurring_day: undefined,
+  recurring_end_date: undefined,
+  last_generated_date: undefined,
+  parent_recurring_id: undefined
+};
+
 
       if (editMode && selectedEntry) {
         // Update existing entry
