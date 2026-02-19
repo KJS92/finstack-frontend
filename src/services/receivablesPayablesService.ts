@@ -14,6 +14,12 @@ export interface ReceivablePayable {
   due_date?: string;
   status: 'pending' | 'partial' | 'completed' | 'overdue';
   category?: string;
+  is_recurring: boolean;
+  recurring_frequency?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurring_day?: number;
+  recurring_end_date?: string;
+  last_generated_date?: string;
+  parent_recurring_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +35,8 @@ export interface PaymentHistory {
 }
 
 class ReceivablesPayablesService {
-  // Get all receivables and payables
+
+  // ─── GET ALL ───────────────────────────────────────────
   async getAll(): Promise<ReceivablePayable[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
@@ -44,7 +51,7 @@ class ReceivablesPayablesService {
     return data || [];
   }
 
-  // Get by type
+  // ─── GET BY TYPE ───────────────────────────────────────
   async getByType(type: 'receivable' | 'payable'): Promise<ReceivablePayable[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
@@ -60,15 +67,32 @@ class ReceivablesPayablesService {
     return data || [];
   }
 
-  // Create new entry
+  // ─── GET RECURRING TEMPLATES ───────────────────────────
+  async getRecurringTemplates(): Promise<ReceivablePayable[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('receivables_payables')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_recurring', true)
+      .is('parent_recurring_id', null)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  // ─── CREATE ────────────────────────────────────────────
   async create(entry: Omit<ReceivablePayable, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<ReceivablePayable> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
       .from('receivables_payables')
-      .insert([{ 
-        ...entry, 
+      .insert([{
+        ...entry,
         user_id: user.id,
         remaining_amount: entry.total_amount - entry.paid_amount
       }])
@@ -79,7 +103,7 @@ class ReceivablesPayablesService {
     return data;
   }
 
-  // Update entry
+  // ─── UPDATE ────────────────────────────────────────────
   async update(id: string, updates: Partial<ReceivablePayable>): Promise<ReceivablePayable> {
     const { data, error } = await supabase
       .from('receivables_payables')
@@ -92,7 +116,7 @@ class ReceivablesPayablesService {
     return data;
   }
 
-  // Delete entry
+  // ─── DELETE ────────────────────────────────────────────
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('receivables_payables')
@@ -102,12 +126,11 @@ class ReceivablesPayablesService {
     if (error) throw error;
   }
 
-  // Add payment
+  // ─── ADD PAYMENT ───────────────────────────────────────
   async addPayment(rpId: string, amount: number, paymentDate: string, notes?: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Get current entry
     const { data: entry, error: fetchError } = await supabase
       .from('receivables_payables')
       .select('*')
@@ -120,7 +143,6 @@ class ReceivablesPayablesService {
     const newRemainingAmount = entry.total_amount - newPaidAmount;
     const newStatus = newRemainingAmount <= 0 ? 'completed' : 'partial';
 
-    // Add payment history
     const { error: paymentError } = await supabase
       .from('payment_history')
       .insert([{
@@ -133,7 +155,6 @@ class ReceivablesPayablesService {
 
     if (paymentError) throw paymentError;
 
-    // Update entry
     await this.update(rpId, {
       paid_amount: newPaidAmount,
       remaining_amount: newRemainingAmount,
@@ -141,7 +162,7 @@ class ReceivablesPayablesService {
     });
   }
 
-  // Get payment history for an entry
+  // ─── GET PAYMENT HISTORY ───────────────────────────────
   async getPaymentHistory(rpId: string): Promise<PaymentHistory[]> {
     const { data, error } = await supabase
       .from('payment_history')
@@ -153,7 +174,93 @@ class ReceivablesPayablesService {
     return data || [];
   }
 
-  // Get summary
+  // ─── AUTO GENERATE RECURRING ENTRIES ──────────────────
+  async generateRecurringEntries(): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const templates = await this.getRecurringTemplates();
+
+    for (const template of templates) {
+      if (!template.recurring_frequency) continue;
+
+      // Check if recurring end date has passed
+      if (template.recurring_end_date) {
+        const endDate = new Date(template.recurring_end_date);
+        if (today > endDate) continue;
+      }
+
+      const lastGenerated = template.last_generated_date
+        ? new Date(template.last_generated_date)
+        : new Date(template.created_at);
+
+      const nextDueDate = this.getNextDueDate(
+        lastGenerated,
+        template.recurring_frequency,
+        template.recurring_day
+      );
+
+      // If next due date is today or in the past, generate new entry
+      if (nextDueDate <= today) {
+        await this.create({
+          type: template.type,
+          title: template.title,
+          description: template.description,
+          contact_name: template.contact_name,
+          contact_phone: template.contact_phone,
+          total_amount: template.total_amount,
+          paid_amount: 0,
+          remaining_amount: template.total_amount,
+          due_date: nextDueDate.toISOString().split('T')[0],
+          status: 'pending',
+          category: template.category,
+          is_recurring: false,
+          parent_recurring_id: template.id
+        });
+
+        // Update last generated date
+        await this.update(template.id, {
+          last_generated_date: nextDueDate.toISOString().split('T')[0]
+        });
+      }
+    }
+  }
+
+  // ─── GET NEXT DUE DATE ─────────────────────────────────
+  private getNextDueDate(
+    lastDate: Date,
+    frequency: string,
+    recurringDay?: number
+  ): Date {
+    const next = new Date(lastDate);
+
+    switch (frequency) {
+      case 'daily':
+        next.setDate(next.getDate() + 1);
+        break;
+      case 'weekly':
+        next.setDate(next.getDate() + 7);
+        break;
+      case 'monthly':
+        next.setMonth(next.getMonth() + 1);
+        if (recurringDay) next.setDate(recurringDay);
+        break;
+      case 'quarterly':
+        next.setMonth(next.getMonth() + 3);
+        if (recurringDay) next.setDate(recurringDay);
+        break;
+      case 'yearly':
+        next.setFullYear(next.getFullYear() + 1);
+        break;
+    }
+
+    return next;
+  }
+
+  // ─── GET SUMMARY ───────────────────────────────────────
   async getSummary(): Promise<{
     totalReceivable: number;
     totalPayable: number;
@@ -168,7 +275,8 @@ class ReceivablesPayablesService {
     const { data, error } = await supabase
       .from('receivables_payables')
       .select('*')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('is_recurring', false);
 
     if (error) throw error;
 
@@ -204,7 +312,7 @@ class ReceivablesPayablesService {
     return summary;
   }
 
-  // Update overdue status
+  // ─── UPDATE OVERDUE STATUS ─────────────────────────────
   async updateOverdueStatus(): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
@@ -220,7 +328,6 @@ class ReceivablesPayablesService {
 
     if (error) throw error;
 
-    // Update each overdue entry
     if (data && data.length > 0) {
       for (const entry of data) {
         await this.update(entry.id, { status: 'overdue' });
