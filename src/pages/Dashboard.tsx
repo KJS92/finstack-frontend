@@ -125,10 +125,9 @@ const Dashboard: React.FC = () => {
 
       // ── This Month's Stats ─────────────────────────────
       const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString().split('T')[0];
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-        .toISOString().split('T')[0];
+      const monthEnd = now.toISOString().split('T')[0];
+      const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      .toISOString().split('T')[0];
 
       const { data: incomeData } = await supabase
         .from('transactions')
