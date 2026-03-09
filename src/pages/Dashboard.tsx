@@ -4,6 +4,8 @@ import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
 import { theme } from '../theme';
 import AppHeader from '../components/layout/AppHeader';
+import React, { useEffect, useState, useRef } from 'react';
+
 
 // ── Types ──────────────────────────────────────────────
 interface MonthStats {
