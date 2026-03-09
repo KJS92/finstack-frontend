@@ -75,6 +75,7 @@ const Dashboard: React.FC = () => {
   const [categorySpend, setCategorySpend] = useState<CategorySpend[]>([]);
   const [loading, setLoading] = useState(true);
   const lastLoadTime = useRef<number>(0);
+  const [initialLoaded, setInitialLoaded] = useState(false); // ← Add this
 
 // Run once on mount
 useEffect(() => {
