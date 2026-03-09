@@ -146,6 +146,10 @@ useEffect(() => {
       const monthEnd = now.toISOString().split('T')[0];
       const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
       .toISOString().split('T')[0];
+      
+      // 🔍 ADD THESE DEBUG LINES TEMPORARILY
+console.log('Date range:', monthStart, '→', monthEnd);
+console.log('User ID:', user.id);
 
       const { data: incomeData } = await supabase
         .from('transactions')
@@ -162,6 +166,10 @@ useEffect(() => {
         .eq('transaction_type', 'debit')
         .gte('transaction_date', monthStart)
         .lte('transaction_date', monthEnd);
+
+      // 🔍 ADD THESE TOO
+console.log('Income data:', incomeData, 'Error:', incomeError);
+console.log('Expense data:', expenseData, 'Error:', expenseError);
 
       const income = incomeData?.reduce((s, t) => s + Number(t.amount), 0) || 0;
       const expenses = expenseData?.reduce((s, t) => s + Number(t.amount), 0) || 0;
