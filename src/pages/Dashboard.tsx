@@ -65,7 +65,6 @@ const Card: React.FC<{
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const [userEmail, setUserEmail] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [netWorth, setNetWorth] = useState(0);
@@ -75,19 +74,27 @@ const Dashboard: React.FC = () => {
   const [recentTxns, setRecentTxns] = useState<Transaction[]>([]);
   const [categorySpend, setCategorySpend] = useState<CategorySpend[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
-  // Reload on every navigation (your existing pattern — preserved)
-  useEffect(() => {
-    checkUser();
+ // Run once on mount — initial load
+useEffect(() => {
+  checkUser();
+  loadDashboardData().then(() => setInitialLoaded(true));
+}, []);
+
+// Only re-fetch when navigating BACK to /dashboard
+useEffect(() => {
+  if (initialLoaded) {
     loadDashboardData();
-  }, [location]);
+  }
+}, [location.pathname]);
 
-  // Reload on window focus (your existing pattern — preserved)
-  useEffect(() => {
-    const handleFocus = () => loadDashboardData();
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+// Keep the window focus listener — it's useful
+useEffect(() => {
+  const handleFocus = () => loadDashboardData();
+  window.addEventListener('focus', handleFocus);
+  return () => window.removeEventListener('focus', handleFocus);
+}, []);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
