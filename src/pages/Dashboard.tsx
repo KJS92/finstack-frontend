@@ -1,11 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
 import { theme } from '../theme';
 import AppHeader from '../components/layout/AppHeader';
-import React, { useEffect, useState, useRef } from 'react';
-
 
 // ── Types ──────────────────────────────────────────────
 interface MonthStats {
