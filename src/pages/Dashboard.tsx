@@ -74,24 +74,34 @@ const Dashboard: React.FC = () => {
   const [recentTxns, setRecentTxns] = useState<Transaction[]>([]);
   const [categorySpend, setCategorySpend] = useState<CategorySpend[]>([]);
   const [loading, setLoading] = useState(true);
-  const [initialLoaded, setInitialLoaded] = useState(false);
+  const lastLoadTime = useRef<number>(0);
 
- // Run once on mount — initial load
+// Run once on mount
 useEffect(() => {
   checkUser();
-  loadDashboardData().then(() => setInitialLoaded(true));
+  loadDashboardData().then(() => {
+    setInitialLoaded(true);
+    lastLoadTime.current = Date.now();
+  });
 }, []);
 
-// Only re-fetch when navigating BACK to /dashboard
+// Re-fetch when navigating back to /dashboard
 useEffect(() => {
   if (initialLoaded) {
     loadDashboardData();
+    lastLoadTime.current = Date.now();
   }
 }, [location.pathname]);
 
-// Keep the window focus listener — it's useful
+// Focus listener — only reload if last load was 5+ minutes ago
 useEffect(() => {
-  const handleFocus = () => loadDashboardData();
+  const handleFocus = () => {
+    const fiveMinutes = 5 * 60 * 1000;
+    if (Date.now() - lastLoadTime.current > fiveMinutes) {
+      loadDashboardData();
+      lastLoadTime.current = Date.now();
+    }
+  };
   window.addEventListener('focus', handleFocus);
   return () => window.removeEventListener('focus', handleFocus);
 }, []);
