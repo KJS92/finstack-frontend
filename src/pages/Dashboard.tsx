@@ -144,7 +144,7 @@ useEffect(() => {
       // ── This Month's Stats ─────────────────────────────
       const now = new Date();
       const monthEnd = now.toISOString().split('T')[0];
-      const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const monthStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
       .toISOString().split('T')[0];
       
       const { data: incomeData, error: incomeError } = await supabase
