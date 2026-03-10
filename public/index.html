@@ -23,6 +23,41 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+
+  <!-- Splash Screen -->
+  <div id="splash-screen" style="
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+  ">
+    <div style="
+      width: 80px; height: 80px;
+      background: white;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 40px;
+      font-weight: 800;
+      color: #22c55e;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    ">F</div>
+    <div style="color: white; font-size: 24px; font-weight: 700;">FinStack</div>
+    <div style="color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 4px;">
+      Personal Finance Manager
+    </div>
+  </div>
+  <div id="root"></div>
+</body>
+
     <div id="root"></div>
   </body>
 </html>
