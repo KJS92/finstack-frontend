@@ -17,6 +17,7 @@ import Budgets from './pages/Budgets';
 import Reports from './pages/Reports';
 import ReceivablesPayables from './pages/ReceivablesPayables';
 import Assets from './pages/Assets';
+import BottomNav from './components/layout/BottomNav';
 import './App.css';
 
 
@@ -77,6 +78,7 @@ function App() {
         </Routes>
       </div>
     </Router>
+    <BottomNav />
   );
 }
 
