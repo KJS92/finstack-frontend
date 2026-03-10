@@ -59,6 +59,26 @@ useEffect(() => {
     window.removeEventListener('offline', handleOffline);
   };
 }, []);
+ 
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+useEffect(() => {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    setInstallPrompt(e);
+    setShowInstallBanner(true);
+  });
+}, []);
+
+const handleInstall = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  const { outcome } = await installPrompt.userChoice;
+  if (outcome === 'accepted') setShowInstallBanner(false);
+  setInstallPrompt(null);
+};
+
 
   if (loading) {
     return (
@@ -120,6 +140,46 @@ if (!isOnline) {
     <Router>
       <div className="App">
         <AuthHandler />
+        {showInstallBanner && (
+  <div style={{
+    position: 'fixed',
+    bottom: '70px',
+    left: '16px',
+    right: '16px',
+    background: '#1f2937',
+    color: 'white',
+    borderRadius: '12px',
+    padding: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 9999,
+    boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+  }}>
+    <div>
+      <div style={{ fontWeight: '700', fontSize: '14px' }}>📲 Install FinStack</div>
+      <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+        Add to home screen for the best experience
+      </div>
+    </div>
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <button onClick={() => setShowInstallBanner(false)} style={{
+        background: 'transparent', color: '#9ca3af',
+        border: 'none', fontSize: '13px', cursor: 'pointer'
+      }}>
+        Later
+      </button>
+      <button onClick={handleInstall} style={{
+        background: '#22c55e', color: 'white',
+        border: 'none', borderRadius: '8px',
+        padding: '8px 16px', fontSize: '13px',
+        fontWeight: '600', cursor: 'pointer'
+      }}>
+        Install
+      </button>
+    </div>
+  </div>
+)}
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/auth" element={<Auth />} />
