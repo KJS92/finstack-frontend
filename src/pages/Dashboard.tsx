@@ -147,7 +147,7 @@ useEffect(() => {
       const monthStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
       .toISOString().split('T')[0];
       
-      const { data: incomeData, error: incomeError } = await supabase
+      const { data: incomeData,} = await supabase
   .from('transactions')
   .select('amount')
   .eq('user_id', user.id)
@@ -155,7 +155,7 @@ useEffect(() => {
   .gte('transaction_date', monthStart)
   .lte('transaction_date', monthEnd);
 
-const { data: expenseData, error: expenseError } = await supabase
+const { data: expenseData,} = await supabase
   .from('transactions')
   .select('amount')
   .eq('user_id', user.id)
@@ -163,18 +163,6 @@ const { data: expenseData, error: expenseError } = await supabase
   .gte('transaction_date', monthStart)
   .lte('transaction_date', monthEnd);
       
-// 👇 ADD THIS RIGHT HERE — after the date variables
-const { data: testData } = await supabase
-  .from('transactions')
-  .select('transaction_date, transaction_type, amount, user_id')
-  .limit(5);
-console.log('TEST - Raw transactions:', testData);
-      
-// Debug logs
-console.log('Date range:', monthStart, '→', monthEnd);
-console.log('Income data:', incomeData, 'Error:', incomeError);
-console.log('Expense data:', expenseData, 'Error:', expenseError);
-
       const income = incomeData?.reduce((s, t) => s + Number(t.amount), 0) || 0;
       const expenses = expenseData?.reduce((s, t) => s + Number(t.amount), 0) || 0;
       setMonthStats({ income, expenses, savings: income - expenses });
