@@ -162,7 +162,14 @@ const { data: expenseData, error: expenseError } = await supabase
   .eq('transaction_type', 'debit')
   .gte('transaction_date', monthStart)
   .lte('transaction_date', monthEnd);
-
+      
+// 👇 ADD THIS RIGHT HERE — after the date variables
+const { data: testData } = await supabase
+  .from('transactions')
+  .select('transaction_date, transaction_type, amount, user_id')
+  .limit(5);
+console.log('TEST - Raw transactions:', testData);
+      
 // Debug logs
 console.log('Date range:', monthStart, '→', monthEnd);
 console.log('Income data:', incomeData, 'Error:', incomeError);
