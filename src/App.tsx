@@ -20,17 +20,23 @@ import Assets from './pages/Assets';
 import BottomNav from './components/layout/BottomNav';
 import './App.css';
 
+// ✅ Moved OUTSIDE App — defined before it's used
+function RootRedirect() {
+  const hash = window.location.hash;
+  if (hash && hash.includes('type=recovery')) {
+    return null;
+  }
+  return <Navigate to="/auth" replace />;
+}
 
 function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Wait for Supabase to restore session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setLoading(false);
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setLoading(false);
     });
@@ -54,45 +60,32 @@ function App() {
     );
   }
 
- return (
-  <Router>
-    <div className="App">
-      <AuthHandler />
-      <Routes>
-        <Route path="/" element={<RootRedirect />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/accounts" element={<Accounts />} />
-        <Route path="/transactions" element={<Transactions />} />
-        <Route path="/add-transaction" element={<AddTransaction />} />
-        <Route path="/transaction-preview" element={<TransactionPreview />} />
-        <Route path="/transactions-list" element={<TransactionsList />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/password-reset" element={<PasswordReset />} />
-        <Route path="/update-password" element={<UpdatePassword />} />
-        <Route path="/categories" element={<Categories />} />
-        <Route path="/budgets" element={<Budgets />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/receivables" element={<ReceivablesPayables />} />
-        <Route path="/assets" element={<Assets />} />
-      </Routes>
-      <BottomNav />  
-    </div>
-  </Router>
-);
-
-
-// Custom component to handle root route
-function RootRedirect() {
-  const hash = window.location.hash;
-  
-  // If there's a recovery token in the hash, don't redirect
-  if (hash && hash.includes('type=recovery')) {
-    return null; // AuthHandler will take care of navigation
-  }
-  
-  // Otherwise redirect to auth
-  return <Navigate to="/auth" replace />;
-}
+  return (
+    <Router>
+      <div className="App">
+        <AuthHandler />
+        <Routes>
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/accounts" element={<Accounts />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/add-transaction" element={<AddTransaction />} />
+          <Route path="/transaction-preview" element={<TransactionPreview />} />
+          <Route path="/transactions-list" element={<TransactionsList />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/password-reset" element={<PasswordReset />} />
+          <Route path="/update-password" element={<UpdatePassword />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/budgets" element={<Budgets />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/receivables" element={<ReceivablesPayables />} />
+          <Route path="/assets" element={<Assets />} />
+        </Routes>
+        <BottomNav />
+      </div>
+    </Router>
+  );
+} // ✅ App's closing brace is now correct
 
 export default App;
