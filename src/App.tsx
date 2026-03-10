@@ -44,6 +44,22 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  
+const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+useEffect(() => {
+  const handleOnline = () => setIsOnline(true);
+  const handleOffline = () => setIsOnline(false);
+
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+
+  return () => {
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+  };
+}, []);
+
   if (loading) {
     return (
       <div style={{
@@ -60,20 +76,45 @@ function App() {
     );
   }
 
-const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-useEffect(() => {
-  const handleOnline = () => setIsOnline(true);
-  const handleOffline = () => setIsOnline(false);
-
-  window.addEventListener('online', handleOnline);
-  window.addEventListener('offline', handleOffline);
-
-  return () => {
-    window.removeEventListener('online', handleOnline);
-    window.removeEventListener('offline', handleOffline);
-  };
-}, []);
+if (!isOnline) {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      background: '#f9fafb',
+      color: '#374151',
+      textAlign: 'center',
+      padding: '24px'
+    }}>
+      <div style={{ fontSize: '64px', marginBottom: '16px' }}>📡</div>
+      <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px' }}>
+        You're Offline
+      </h2>
+      <p style={{ fontSize: '15px', color: '#6b7280', maxWidth: '280px' }}>
+        No internet connection. Please check your network and try again.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          marginTop: '24px',
+          padding: '12px 24px',
+          background: '#22c55e',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '15px',
+          fontWeight: '600',
+          cursor: 'pointer'
+        }}
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
   
   return (
     <Router>
