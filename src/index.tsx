@@ -13,6 +13,16 @@ root.render(
   </React.StrictMode>
 );
 
+// Hide splash screen once app loads
+const splash = document.getElementById('splash-screen');
+if (splash) {
+  setTimeout(() => {
+    splash.style.transition = 'opacity 0.5s ease';
+    splash.style.opacity = '0';
+    setTimeout(() => splash.remove(), 500);
+  }, 800);
+}
+
 // ✅ Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
