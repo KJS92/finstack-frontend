@@ -54,33 +54,33 @@ function App() {
     );
   }
 
-  return (
-    <Router>
-      <div className="App">
-        <AuthHandler />
-        <Routes>
-          <Route path="/" element={<RootRedirect />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/accounts" element={<Accounts />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/add-transaction" element={<AddTransaction />} />
-          <Route path="/transaction-preview" element={<TransactionPreview />} />
-          <Route path="/transactions-list" element={<TransactionsList />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/password-reset" element={<PasswordReset />} />
-          <Route path="/update-password" element={<UpdatePassword />} />
-          <Route path="/categories" element={<Categories />} />
-          <Route path="/budgets" element={<Budgets />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/receivables" element={<ReceivablesPayables />} />
-          <Route path="/assets" element={<Assets />} />
-        </Routes>
-      </div>
-    </Router>
-    <BottomNav />
-  );
-}
+ return (
+  <Router>
+    <div className="App">
+      <AuthHandler />
+      <Routes>
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/accounts" element={<Accounts />} />
+        <Route path="/transactions" element={<Transactions />} />
+        <Route path="/add-transaction" element={<AddTransaction />} />
+        <Route path="/transaction-preview" element={<TransactionPreview />} />
+        <Route path="/transactions-list" element={<TransactionsList />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/password-reset" element={<PasswordReset />} />
+        <Route path="/update-password" element={<UpdatePassword />} />
+        <Route path="/categories" element={<Categories />} />
+        <Route path="/budgets" element={<Budgets />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/receivables" element={<ReceivablesPayables />} />
+        <Route path="/assets" element={<Assets />} />
+      </Routes>
+      <BottomNav />  
+    </div>
+  </Router>
+);
+
 
 // Custom component to handle root route
 function RootRedirect() {
