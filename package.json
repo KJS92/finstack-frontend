@@ -13,18 +13,19 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5",
-    "papaparse": "^5.3.2",
+    "papaparse": "5.3.2",
     "lucide-react": "^0.344.0",
     "@types/papaparse": "^5.3.14",
-    "recharts": "^2.12.7"   
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
     "@craco/craco": "^7.1.0"
   },
   "scripts": {
-  "start": "craco start",
-  "build": "craco build",
-  "test": "craco test",
-  "eject": "react-scripts eject"
-  }
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test",
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
