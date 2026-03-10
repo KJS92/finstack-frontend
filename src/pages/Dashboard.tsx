@@ -147,27 +147,24 @@ useEffect(() => {
       const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
       .toISOString().split('T')[0];
       
-      // 🔍 ADD THESE DEBUG LINES TEMPORARILY
+      const { data: incomeData, error: incomeError } = await supabase
+  .from('transactions')
+  .select('amount')
+  .eq('user_id', user.id)
+  .eq('transaction_type', 'credit')
+  .gte('transaction_date', monthStart)
+  .lte('transaction_date', monthEnd);
+
+const { data: expenseData, error: expenseError } = await supabase
+  .from('transactions')
+  .select('amount')
+  .eq('user_id', user.id)
+  .eq('transaction_type', 'debit')
+  .gte('transaction_date', monthStart)
+  .lte('transaction_date', monthEnd);
+
+// Debug logs
 console.log('Date range:', monthStart, '→', monthEnd);
-console.log('User ID:', user.id);
-
-      const { data: incomeData } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('user_id', user.id)
-        .eq('transaction_type', 'credit')
-        .gte('transaction_date', monthStart)
-        .lte('transaction_date', monthEnd);
-
-      const { data: expenseData } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('user_id', user.id)
-        .eq('transaction_type', 'debit')
-        .gte('transaction_date', monthStart)
-        .lte('transaction_date', monthEnd);
-
-      // 🔍 ADD THESE TOO
 console.log('Income data:', incomeData, 'Error:', incomeError);
 console.log('Expense data:', expenseData, 'Error:', expenseError);
 
