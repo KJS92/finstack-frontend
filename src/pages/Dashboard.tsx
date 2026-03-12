@@ -2,8 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
+import { receivablesPayablesService } from '../services/receivablesPayablesService';
 import { theme } from '../theme';
 import AppHeader from '../components/layout/AppHeader';
+import { AlertCircle, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────
 interface MonthStats {
@@ -24,6 +26,23 @@ interface Transaction {
 interface CategorySpend {
   category: string;
   total: number;
+}
+
+interface RPSummary {
+  totalReceivable: number;
+  totalPayable: number;
+  overdueReceivable: number;
+  overduePayable: number;
+}
+
+interface UpcomingDue {
+  id: string;
+  title: string;
+  type: 'receivable' | 'payable';
+  remaining_amount: number;
+  due_date: string;
+  status: string;
+  contact_name?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -73,39 +92,38 @@ const Dashboard: React.FC = () => {
   });
   const [recentTxns, setRecentTxns] = useState<Transaction[]>([]);
   const [categorySpend, setCategorySpend] = useState<CategorySpend[]>([]);
+  const [rpSummary, setRpSummary] = useState<RPSummary | null>(null);
+  const [upcomingDues, setUpcomingDues] = useState<UpcomingDue[]>([]);
   const [loading, setLoading] = useState(true);
   const lastLoadTime = useRef<number>(0);
-  const [initialLoaded, setInitialLoaded] = useState(false); // ← Add this
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
-// Run once on mount
-useEffect(() => {
-  checkUser();
-  loadDashboardData().then(() => {
-    setInitialLoaded(true);
-    lastLoadTime.current = Date.now();
-  });
-}, []);
+  useEffect(() => {
+    checkUser();
+    loadDashboardData().then(() => {
+      setInitialLoaded(true);
+      lastLoadTime.current = Date.now();
+    });
+  }, []);
 
-// Re-fetch when navigating back to /dashboard
-useEffect(() => {
-  if (initialLoaded) {
-    loadDashboardData();
-    lastLoadTime.current = Date.now();
-  }
-}, [location.pathname]);
-
-// Focus listener — only reload if last load was 5+ minutes ago
-useEffect(() => {
-  const handleFocus = () => {
-    const fiveMinutes = 5 * 60 * 1000;
-    if (Date.now() - lastLoadTime.current > fiveMinutes) {
+  useEffect(() => {
+    if (initialLoaded) {
       loadDashboardData();
       lastLoadTime.current = Date.now();
     }
-  };
-  window.addEventListener('focus', handleFocus);
-  return () => window.removeEventListener('focus', handleFocus);
-}, []);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      const fiveMinutes = 5 * 60 * 1000;
+      if (Date.now() - lastLoadTime.current > fiveMinutes) {
+        loadDashboardData();
+        lastLoadTime.current = Date.now();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -119,55 +137,45 @@ useEffect(() => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // ── Accounts (your existing service — preserved) ──
+      // ── Accounts ──
       const accountsData = await accountService.getAccounts();
       setAccounts(accountsData);
 
-      // ── Net Worth ──────────────────────────────────────
+      // ── Net Worth ──
       const bankBalance = accountsData
         .filter(a => a.type !== 'credit_card')
         .reduce((s, a) => s + Number(a.balance), 0);
-
       const creditLiability = accountsData
         .filter(a => a.type === 'credit_card')
         .reduce((s, a) => s + Number(a.balance), 0);
-
       const { data: assets } = await supabase
         .from('assets')
         .select('current_value')
         .eq('user_id', user.id)
         .eq('is_active', true);
-
       const totalAssets = assets?.reduce((s, a) => s + Number(a.current_value), 0) || 0;
       setNetWorth(bankBalance + totalAssets - creditLiability);
 
-      // ── This Month's Stats ─────────────────────────────
+      // ── This Month's Stats (FIXED: actual current month range) ──
       const now = new Date();
-      const monthEnd = now.toISOString().split('T')[0];
-      const monthStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
-      .toISOString().split('T')[0];
-      
-      const { data: incomeData,} = await supabase
-  .from('transactions')
-  .select('amount')
-  .eq('user_id', user.id)
-  .eq('transaction_type', 'credit')
-  .gte('transaction_date', monthStart)
-  .lte('transaction_date', monthEnd);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        .toISOString().split('T')[0];
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        .toISOString().split('T')[0];
 
-const { data: expenseData,} = await supabase
-  .from('transactions')
-  .select('amount')
-  .eq('user_id', user.id)
-  .eq('transaction_type', 'debit')
-  .gte('transaction_date', monthStart)
-  .lte('transaction_date', monthEnd);
-      
+      const [{ data: incomeData }, { data: expenseData }] = await Promise.all([
+        supabase.from('transactions').select('amount')
+          .eq('user_id', user.id).eq('transaction_type', 'credit')
+          .gte('transaction_date', monthStart).lte('transaction_date', monthEnd),
+        supabase.from('transactions').select('amount')
+          .eq('user_id', user.id).eq('transaction_type', 'debit')
+          .gte('transaction_date', monthStart).lte('transaction_date', monthEnd)
+      ]);
       const income = incomeData?.reduce((s, t) => s + Number(t.amount), 0) || 0;
       const expenses = expenseData?.reduce((s, t) => s + Number(t.amount), 0) || 0;
       setMonthStats({ income, expenses, savings: income - expenses });
 
-      // ── Recent Transactions ────────────────────────────
+      // ── Recent Transactions ──
       const { data: txns } = await supabase
         .from('transactions')
         .select('id, description, amount, transaction_type, transaction_date, category')
@@ -176,7 +184,7 @@ const { data: expenseData,} = await supabase
         .limit(5);
       setRecentTxns(txns || []);
 
-      // ── Category Spending ──────────────────────────────
+      // ── Category Spending ──
       const { data: catData } = await supabase
         .from('category_spending')
         .select('category, total')
@@ -184,6 +192,36 @@ const { data: expenseData,} = await supabase
         .order('total', { ascending: false })
         .limit(4);
       setCategorySpend(catData || []);
+
+      // ── Receivables / Payables Summary ──
+      try {
+        const rp = await receivablesPayablesService.getSummary();
+        setRpSummary({
+          totalReceivable: rp.pendingReceivable,
+          totalPayable: rp.pendingPayable,
+          overdueReceivable: rp.overdueReceivable,
+          overduePayable: rp.overduePayable,
+        });
+      } catch (_) {}
+
+      // ── Upcoming Dues (next 7 days) ──
+      try {
+        const sevenDaysLater = new Date();
+        sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+        const today = new Date().toISOString().split('T')[0];
+        const futureDate = sevenDaysLater.toISOString().split('T')[0];
+
+        const { data: dueData } = await supabase
+          .from('receivables_payables')
+          .select('id, title, type, remaining_amount, due_date, status, contact_name')
+          .eq('user_id', user.id)
+          .neq('status', 'completed')
+          .gte('due_date', today)
+          .lte('due_date', futureDate)
+          .order('due_date', { ascending: true })
+          .limit(5);
+        setUpcomingDues(dueData || []);
+      } catch (_) {}
 
     } catch (err) {
       console.error('Error loading dashboard:', err);
@@ -218,11 +256,7 @@ const { data: expenseData,} = await supabase
       minHeight: '100vh',
       fontFamily: 'Inter, sans-serif',
     }}>
-      <AppHeader
-        title="Dashboard"
-        userEmail={userEmail}
-        activePage="dashboard"
-      />
+      <AppHeader title="Dashboard" userEmail={userEmail} activePage="dashboard" />
 
       <div style={{
         padding: '20px 16px 80px',
@@ -239,13 +273,9 @@ const { data: expenseData,} = await supabase
           {getGreeting()}, {firstName}
         </p>
 
-        {/* ── Net Worth Hero ─────────────────────────── */}
+        {/* ── Net Worth Hero ── */}
         <Card style={{ marginBottom: '16px', padding: '20px' }}>
-          <p style={{
-            color: theme.colors.textSecondary,
-            fontSize: theme.fontSizes.label,
-            margin: '0 0 6px',
-          }}>
+          <p style={{ color: theme.colors.textSecondary, fontSize: theme.fontSizes.label, margin: '0 0 6px' }}>
             Net Worth
           </p>
           <h1 style={{
@@ -259,7 +289,7 @@ const { data: expenseData,} = await supabase
           </h1>
         </Card>
 
-        {/* ── Month Stats ────────────────────────────── */}
+        {/* ── Month Stats ── */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
@@ -272,11 +302,7 @@ const { data: expenseData,} = await supabase
             { label: 'Savings', value: monthStats.savings, color: theme.colors.info },
           ].map(stat => (
             <Card key={stat.label} accentColor={stat.color} padding="12px">
-              <p style={{
-                color: theme.colors.textSecondary,
-                fontSize: '11px',
-                margin: '0 0 4px',
-              }}>
+              <p style={{ color: theme.colors.textSecondary, fontSize: '11px', margin: '0 0 4px' }}>
                 {stat.label}
               </p>
               <p style={{
@@ -291,7 +317,167 @@ const { data: expenseData,} = await supabase
           ))}
         </div>
 
-        {/* ── Accounts ───────────────────────────────── */}
+        {/* ── Receivables / Payables Summary ── */}
+        {rpSummary && (rpSummary.totalReceivable > 0 || rpSummary.totalPayable > 0) && (
+          <Card style={{ marginBottom: '16px', padding: '16px' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '12px',
+            }}>
+              <p style={{
+                color: theme.colors.textPrimary,
+                fontSize: theme.fontSizes.heading2,
+                fontWeight: theme.fontWeights.semibold,
+                margin: 0,
+              }}>
+                Receivables & Payables
+              </p>
+              <button
+                onClick={() => navigate('/receivables')}
+                style={{
+                  background: 'none', border: 'none',
+                  color: theme.colors.primary,
+                  fontSize: theme.fontSizes.label,
+                  cursor: 'pointer',
+                  fontWeight: theme.fontWeights.medium,
+                }}
+              >
+                View all →
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{
+                background: '#f0fdf4',
+                borderRadius: theme.radius.md,
+                padding: '12px',
+                border: '1px solid #bbf7d0',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <TrendingUp size={14} color="#16a34a" />
+                  <span style={{ fontSize: '11px', color: '#15803d', fontWeight: 500 }}>To Receive</span>
+                </div>
+                <p style={{ fontSize: '16px', fontWeight: 700, color: '#14532d', margin: 0 }}>
+                  {formatINR(rpSummary.totalReceivable)}
+                </p>
+                {rpSummary.overdueReceivable > 0 && (
+                  <p style={{ fontSize: '11px', color: '#dc2626', margin: '4px 0 0' }}>
+                    {formatINR(rpSummary.overdueReceivable)} overdue
+                  </p>
+                )}
+              </div>
+              <div style={{
+                background: '#fef2f2',
+                borderRadius: theme.radius.md,
+                padding: '12px',
+                border: '1px solid #fecaca',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <TrendingDown size={14} color="#dc2626" />
+                  <span style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 500 }}>To Pay</span>
+                </div>
+                <p style={{ fontSize: '16px', fontWeight: 700, color: '#7f1d1d', margin: 0 }}>
+                  {formatINR(rpSummary.totalPayable)}
+                </p>
+                {rpSummary.overduePayable > 0 && (
+                  <p style={{ fontSize: '11px', color: '#dc2626', margin: '4px 0 0' }}>
+                    {formatINR(rpSummary.overduePayable)} overdue
+                  </p>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* ── Upcoming Dues (next 7 days) ── */}
+        {upcomingDues.length > 0 && (
+          <Card style={{ marginBottom: '16px', padding: '16px' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '12px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={16} color={theme.colors.primary} />
+                <p style={{
+                  color: theme.colors.textPrimary,
+                  fontSize: theme.fontSizes.heading2,
+                  fontWeight: theme.fontWeights.semibold,
+                  margin: 0,
+                }}>
+                  Due This Week
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/receivables')}
+                style={{
+                  background: 'none', border: 'none',
+                  color: theme.colors.primary,
+                  fontSize: theme.fontSizes.label,
+                  cursor: 'pointer',
+                  fontWeight: theme.fontWeights.medium,
+                }}
+              >
+                View all →
+              </button>
+            </div>
+            {upcomingDues.map((due, i) => (
+              <div key={due.id}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 0',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '8px', height: '8px', borderRadius: '50%',
+                      backgroundColor: due.type === 'receivable' ? '#16a34a' : '#dc2626',
+                      flexShrink: 0,
+                    }} />
+                    <div>
+                      <p style={{
+                        color: theme.colors.textPrimary,
+                        fontSize: theme.fontSizes.body,
+                        fontWeight: theme.fontWeights.medium,
+                        margin: '0 0 2px',
+                      }}>
+                        {due.title}
+                      </p>
+                      <p style={{ color: theme.colors.textMuted, fontSize: theme.fontSizes.caption, margin: 0 }}>
+                        {due.contact_name && `${due.contact_name} · `}
+                        {new Date(due.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{
+                      color: due.type === 'receivable' ? '#16a34a' : '#dc2626',
+                      fontSize: theme.fontSizes.body,
+                      fontWeight: theme.fontWeights.semibold,
+                      margin: '0 0 2px',
+                    }}>
+                      {formatINR(due.remaining_amount)}
+                    </p>
+                    {due.status === 'overdue' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}>
+                        <AlertCircle size={10} color="#dc2626" />
+                        <span style={{ fontSize: '10px', color: '#dc2626' }}>Overdue</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {i < upcomingDues.length - 1 && (
+                  <div style={{ height: '1px', backgroundColor: theme.colors.borderSubtle }} />
+                )}
+              </div>
+            ))}
+          </Card>
+        )}
+
+        {/* ── Accounts ── */}
         <Card style={{ marginBottom: '16px' }}>
           <div style={{
             display: 'flex',
@@ -323,9 +509,7 @@ const { data: expenseData,} = await supabase
 
           {accounts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <p style={{ color: theme.colors.textSecondary, marginBottom: '12px' }}>
-                No accounts yet
-              </p>
+              <p style={{ color: theme.colors.textSecondary, marginBottom: '12px' }}>No accounts yet</p>
               <button
                 onClick={() => navigate('/accounts')}
                 style={{
@@ -384,17 +568,14 @@ const { data: expenseData,} = await supabase
                   </p>
                 </div>
                 {i < Math.min(accounts.length, 4) - 1 && (
-                  <div style={{
-                    height: '1px',
-                    backgroundColor: theme.colors.borderSubtle,
-                  }} />
+                  <div style={{ height: '1px', backgroundColor: theme.colors.borderSubtle }} />
                 )}
               </div>
             ))
           )}
         </Card>
 
-        {/* ── Category Spending ──────────────────────── */}
+        {/* ── Category Spending ── */}
         {categorySpend.length > 0 && (
           <Card style={{ marginBottom: '16px' }}>
             <p style={{
@@ -407,11 +588,7 @@ const { data: expenseData,} = await supabase
             </p>
             {categorySpend.map(cat => (
               <div key={cat.category} style={{ marginBottom: '14px' }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: '5px',
-                }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                   <span style={{
                     color: theme.colors.textSecondary,
                     fontSize: theme.fontSizes.label,
@@ -445,7 +622,7 @@ const { data: expenseData,} = await supabase
           </Card>
         )}
 
-        {/* ── Recent Transactions ────────────────────── */}
+        {/* ── Recent Transactions ── */}
         {recentTxns.length > 0 && (
           <Card>
             <div style={{
@@ -499,9 +676,7 @@ const { data: expenseData,} = await supabase
                       textTransform: 'capitalize',
                     }}>
                       {txn.category} · {new Date(txn.transaction_date)
-                        .toLocaleDateString('en-IN', {
-                          day: 'numeric', month: 'short',
-                        })}
+                        .toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                   <span style={{
@@ -516,10 +691,7 @@ const { data: expenseData,} = await supabase
                   </span>
                 </div>
                 {i < recentTxns.length - 1 && (
-                  <div style={{
-                    height: '1px',
-                    backgroundColor: theme.colors.borderSubtle,
-                  }} />
+                  <div style={{ height: '1px', backgroundColor: theme.colors.borderSubtle }} />
                 )}
               </div>
             ))}

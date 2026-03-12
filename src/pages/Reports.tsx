@@ -1,52 +1,105 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 import AppHeader from '../components/layout/AppHeader';
 import { reportsService, MonthlySummary, CategoryBreakdown, AccountSummary, DailySpending } from '../services/reportsService';
-import { TrendingUp, Calendar, PieChart, Wallet, TrendingDown } from 'lucide-react';
+import { budgetService, BudgetWithSpending } from '../services/budgetService';
+import { TrendingUp, TrendingDown, Calendar, PieChart, Wallet, BarChart2, Download } from 'lucide-react';
 import CategoryPieChart from '../components/charts/CategoryPieChart';
 import SpendingTrendChart from '../components/charts/SpendingTrendChart';
 import './Reports.css';
 
+type RangeOption = 'this_month' | 'last_3m' | 'last_6m' | 'custom';
+
+interface MonthlyBarData {
+  month: string;
+  income: number;
+  expense: number;
+}
+
+interface TopExpense {
+  description: string;
+  amount: number;
+  category: string;
+  transaction_date: string;
+}
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+
+  // Range selection
+  const [rangeOption, setRangeOption] = useState<RangeOption>('this_month');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  // Data
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
   const [accountSummary, setAccountSummary] = useState<AccountSummary[]>([]);
   const [dailySpending, setDailySpending] = useState<DailySpending[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [user, setUser] = useState<any>(null);
+  const [monthlyBarData, setMonthlyBarData] = useState<MonthlyBarData[]>([]);
+  const [topExpenses, setTopExpenses] = useState<TopExpense[]>([]);
+  const [budgets, setBudgets] = useState<BudgetWithSpending[]>([]);
 
   useEffect(() => {
-    // Load user
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    });
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
   }, []);
 
+  // Compute date range from selected option
+  const getDateRange = useCallback((): { startDate: string; endDate: string } => {
+    const now = new Date();
+    if (rangeOption === 'this_month') {
+      return {
+        startDate: new Date(selectedYear, selectedMonth - 1, 1).toISOString().split('T')[0],
+        endDate: new Date(selectedYear, selectedMonth, 0).toISOString().split('T')[0],
+      };
+    } else if (rangeOption === 'last_3m') {
+      const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return { startDate: start.toISOString().split('T')[0], endDate: end.toISOString().split('T')[0] };
+    } else if (rangeOption === 'last_6m') {
+      const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return { startDate: start.toISOString().split('T')[0], endDate: end.toISOString().split('T')[0] };
+    } else {
+      return { startDate: customStart, endDate: customEnd };
+    }
+  }, [rangeOption, selectedMonth, selectedYear, customStart, customEnd]);
+
   useEffect(() => {
+    if (rangeOption === 'custom' && (!customStart || !customEnd)) return;
     loadReports();
-  }, [selectedMonth, selectedYear]);
+  }, [rangeOption, selectedMonth, selectedYear, customStart, customEnd]);
 
   const loadReports = async () => {
+    if (!user && !(await supabase.auth.getUser()).data.user) return;
     try {
       setLoading(true);
-      
-      // Calculate date range for selected month
-      const startDate = new Date(selectedYear, selectedMonth - 1, 1).toISOString().split('T')[0];
-      const endDate = new Date(selectedYear, selectedMonth, 0).toISOString().split('T')[0];
+      const { startDate, endDate } = getDateRange();
 
-      const [summary, categories, accounts, spending] = await Promise.all([
+      const [summary, categories, accounts, spending, topExp, budgetData] = await Promise.all([
         reportsService.getMonthlySummary(selectedYear, selectedMonth),
         reportsService.getCategoryBreakdown(startDate, endDate),
         reportsService.getAccountSummary(startDate, endDate),
-        reportsService.getDailySpending(startDate, endDate)
+        reportsService.getDailySpending(startDate, endDate),
+        loadTopExpenses(startDate, endDate),
+        budgetService.getBudgetsWithSpending(startDate, endDate),
       ]);
 
       setMonthlySummary(summary);
       setCategoryBreakdown(categories);
       setAccountSummary(accounts);
       setDailySpending(spending);
+      setTopExpenses(topExp);
+      setBudgets(budgetData);
+
+      // Monthly bar chart — last 6 months
+      const barData = await loadMonthlyBarData();
+      setMonthlyBarData(barData);
     } catch (error) {
       console.error('Error loading reports:', error);
     } finally {
@@ -54,26 +107,97 @@ const Reports: React.FC = () => {
     }
   };
 
-  // Transform category data for pie chart
+  const loadTopExpenses = async (startDate: string, endDate: string): Promise<TopExpense[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from('transactions')
+      .select('description, amount, category, transaction_date')
+      .eq('user_id', user.id)
+      .eq('transaction_type', 'debit')
+      .gte('transaction_date', startDate)
+      .lte('transaction_date', endDate)
+      .order('amount', { ascending: false })
+      .limit(5);
+    return data || [];
+  };
+
+  const loadMonthlyBarData = async (): Promise<MonthlyBarData[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const now = new Date();
+    const months: MonthlyBarData[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+      const [{ data: inc }, { data: exp }] = await Promise.all([
+        supabase.from('transactions').select('amount')
+          .eq('user_id', user.id).eq('transaction_type', 'credit')
+          .gte('transaction_date', start).lte('transaction_date', end),
+        supabase.from('transactions').select('amount')
+          .eq('user_id', user.id).eq('transaction_type', 'debit')
+          .gte('transaction_date', start).lte('transaction_date', end),
+      ]);
+      months.push({
+        month: MONTH_NAMES[d.getMonth()],
+        income: inc?.reduce((s, t) => s + t.amount, 0) || 0,
+        expense: exp?.reduce((s, t) => s + t.amount, 0) || 0,
+      });
+    }
+    return months;
+  };
+
+  const handleExportCSV = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { startDate, endDate } = getDateRange();
+    const { data } = await supabase
+      .from('transactions')
+      .select('transaction_date, description, category, amount, transaction_type, notes')
+      .eq('user_id', user.id)
+      .gte('transaction_date', startDate)
+      .lte('transaction_date', endDate)
+      .order('transaction_date', { ascending: false });
+    if (!data || data.length === 0) { alert('No transactions found for the selected period.'); return; }
+    const headers = ['Date', 'Description', 'Category', 'Type', 'Amount (Rs.)', 'Notes'];
+    const rows = data.map(t => [
+      t.transaction_date,
+      `"${(t.description || '').replace(/"/g, '""')}"`,
+      t.category || '',
+      t.transaction_type === 'credit' ? 'Income' : 'Expense',
+      t.amount,
+      `"${(t.notes || '').replace(/"/g, '""')}"`
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finstack-transactions-${startDate}-to-${endDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const categoryChartData = categoryBreakdown.map(cat => ({
     name: cat.category_name,
     value: cat.total_amount,
-    color: cat.category_color
+    color: cat.category_color,
   }));
 
-  if (!user) {
-    return <div className="loading-container">Loading...</div>;
-  }
+  const maxBarValue = Math.max(...monthlyBarData.flatMap(m => [m.income, m.expense]), 1);
+
+  const formatINR = (n: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
+  if (!user) return <div className="loading-container">Loading...</div>;
 
   return (
     <div>
       <AppHeader title="Reports" userEmail={user.email || ''} activePage="reports" />
-      
       <div className="reports-container">
         {loading ? (
-          <div className="loading-container">
-            <div>Loading reports...</div>
-          </div>
+          <div className="loading-container"><div>Loading reports...</div></div>
         ) : (
           <>
             {/* Header */}
@@ -82,69 +206,125 @@ const Reports: React.FC = () => {
                 <h1>Financial Reports</h1>
                 <p>Detailed insights into your spending and income</p>
               </div>
-              
-              {/* Month Selector */}
-              <div className="month-selector">
-                <Calendar className="w-5 h-5" style={{ color: '#999' }} />
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                >
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {new Date(2000, i, 1).toLocaleDateString('en-US', { month: 'long' })}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                >
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <option key={i} value={new Date().getFullYear() - i}>
-                      {new Date().getFullYear() - i}
-                    </option>
-                  ))}
-                </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                {/* Range selector */}
+                <div className="month-selector">
+                  <Calendar className="w-5 h-5" style={{ color: '#999' }} />
+                  <select value={rangeOption} onChange={e => setRangeOption(e.target.value as RangeOption)}>
+                    <option value="this_month">This Month</option>
+                    <option value="last_3m">Last 3 Months</option>
+                    <option value="last_6m">Last 6 Months</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                {rangeOption === 'this_month' && (
+                  <div className="month-selector">
+                    <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {new Date(2000, i, 1).toLocaleDateString('en-US', { month: 'long' })}
+                        </option>
+                      ))}
+                    </select>
+                    <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <option key={i} value={new Date().getFullYear() - i}>
+                          {new Date().getFullYear() - i}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {rangeOption === 'custom' && (
+                  <div className="month-selector">
+                    <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                      style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+                    <span style={{ color: '#666' }}>to</span>
+                    <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                      style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+                  </div>
+                )}
+                {/* Export CSV button */}
+                <button onClick={handleExportCSV} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '8px 14px', backgroundColor: '#7c3aed', color: '#fff',
+                  border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer',
+                  fontWeight: 500,
+                }}>
+                  <Download size={14} />
+                  Export CSV
+                </button>
               </div>
             </div>
 
             {/* Monthly Summary Cards */}
             {monthlySummary && (
               <div className="summary-cards">
-                {/* Income Card */}
                 <div className="summary-card income">
                   <div className="summary-card-header">
                     <span className="summary-card-label">Total Income</span>
                     <TrendingUp size={20} color="#16a34a" />
                   </div>
-                  <div className="summary-card-amount">
-                    ₹{monthlySummary.totalIncome.toLocaleString('en-IN')}
-                  </div>
+                  <div className="summary-card-amount">₹{monthlySummary.totalIncome.toLocaleString('en-IN')}</div>
                 </div>
-
-                {/* Expense Card */}
                 <div className="summary-card expense">
                   <div className="summary-card-header">
                     <span className="summary-card-label">Total Expense</span>
-                    <TrendingUp size={20} color="#dc2626" style={{ transform: 'rotate(180deg)' }} />
+                    <TrendingDown size={20} color="#dc2626" />
                   </div>
-                  <div className="summary-card-amount">
-                    ₹{monthlySummary.totalExpense.toLocaleString('en-IN')}
-                  </div>
+                  <div className="summary-card-amount">₹{monthlySummary.totalExpense.toLocaleString('en-IN')}</div>
                 </div>
-
-                {/* Net Amount Card */}
                 <div className={`summary-card ${monthlySummary.netAmount >= 0 ? 'net-positive' : 'net-negative'}`}>
                   <div className="summary-card-header">
                     <span className="summary-card-label">Net Amount</span>
                     <Wallet size={20} color={monthlySummary.netAmount >= 0 ? '#2563eb' : '#ea580c'} />
                   </div>
-                  <div className="summary-card-amount">
-                    ₹{Math.abs(monthlySummary.netAmount).toLocaleString('en-IN')}
+                  <div className="summary-card-amount">₹{Math.abs(monthlySummary.netAmount).toLocaleString('en-IN')}</div>
+                  <div className="summary-card-info">{monthlySummary.transactionCount} transactions</div>
+                </div>
+              </div>
+            )}
+
+            {/* Monthly Income vs Expense Bar Chart */}
+            {monthlyBarData.length > 0 && (
+              <div className="section-card">
+                <div className="section-header">
+                  <BarChart2 size={20} />
+                  <h2>Income vs Expense (Last 6 Months)</h2>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '180px', padding: '0 8px' }}>
+                  {monthlyBarData.map(m => (
+                    <div key={m.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', width: '100%', height: '150px', justifyContent: 'center' }}>
+                        <div style={{
+                          width: '42%',
+                          height: `${(m.income / maxBarValue) * 150}px`,
+                          backgroundColor: '#16a34a',
+                          borderRadius: '3px 3px 0 0',
+                          minHeight: m.income > 0 ? '4px' : '0',
+                          transition: 'height 0.4s ease',
+                        }} title={`Income: ${formatINR(m.income)}`} />
+                        <div style={{
+                          width: '42%',
+                          height: `${(m.expense / maxBarValue) * 150}px`,
+                          backgroundColor: '#dc2626',
+                          borderRadius: '3px 3px 0 0',
+                          minHeight: m.expense > 0 ? '4px' : '0',
+                          transition: 'height 0.4s ease',
+                        }} title={`Expense: ${formatINR(m.expense)}`} />
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#666' }}>{m.month}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '16px', marginTop: '12px', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: '#16a34a', borderRadius: '2px' }} />
+                    <span style={{ fontSize: '12px', color: '#666' }}>Income</span>
                   </div>
-                  <div className="summary-card-info">
-                    {monthlySummary.transactionCount} transactions
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: '#dc2626', borderRadius: '2px' }} />
+                    <span style={{ fontSize: '12px', color: '#666' }}>Expense</span>
                   </div>
                 </div>
               </div>
@@ -154,7 +334,7 @@ const Reports: React.FC = () => {
             <div className="section-card">
               <div className="section-header">
                 <TrendingDown size={20} />
-                <h2>Spending Trend</h2>
+                <h2>Daily Spending Trend</h2>
               </div>
               <SpendingTrendChart data={dailySpending} />
             </div>
@@ -174,38 +354,25 @@ const Reports: React.FC = () => {
                 <PieChart size={20} />
                 <h2>Category Breakdown</h2>
               </div>
-              
               {categoryBreakdown.length === 0 ? (
                 <p className="empty-state">No expense data for this period</p>
               ) : (
                 <div className="category-list">
-                  {categoryBreakdown.map((category) => (
+                  {categoryBreakdown.map(category => (
                     <div key={category.category_id} className="category-item">
                       <span className="category-icon">{category.category_icon}</span>
                       <div className="category-details">
                         <div className="category-header">
                           <span className="category-name">{category.category_name}</span>
-                          <span className="category-amount">
-                            ₹{category.total_amount.toLocaleString('en-IN')}
-                          </span>
+                          <span className="category-amount">₹{category.total_amount.toLocaleString('en-IN')}</span>
                         </div>
                         <div className="category-progress">
                           <div className="progress-bar-container">
-                            <div
-                              className="progress-bar"
-                              style={{
-                                width: `${category.percentage}%`,
-                                backgroundColor: category.category_color
-                              }}
-                            />
+                            <div className="progress-bar" style={{ width: `${category.percentage}%`, backgroundColor: category.category_color }} />
                           </div>
-                          <span className="category-percentage">
-                            {category.percentage.toFixed(1)}%
-                          </span>
+                          <span className="category-percentage">{category.percentage.toFixed(1)}%</span>
                         </div>
-                        <div className="category-count">
-                          {category.transaction_count} transactions
-                        </div>
+                        <div className="category-count">{category.transaction_count} transactions</div>
                       </div>
                     </div>
                   ))}
@@ -213,13 +380,80 @@ const Reports: React.FC = () => {
               )}
             </div>
 
+            {/* Top 5 Expenses */}
+            {topExpenses.length > 0 && (
+              <div className="section-card">
+                <div className="section-header">
+                  <TrendingDown size={20} color="#dc2626" />
+                  <h2>Top Expenses</h2>
+                </div>
+                <div className="category-list">
+                  {topExpenses.map((exp, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < topExpenses.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '28px', height: '28px', borderRadius: '50%',
+                          backgroundColor: '#fef2f2', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          fontSize: '13px', fontWeight: 700, color: '#dc2626', flexShrink: 0,
+                        }}>
+                          {i + 1}
+                        </div>
+                        <div>
+                          <p style={{ margin: '0 0 2px', fontSize: '14px', fontWeight: 500, color: '#111' }}>{exp.description}</p>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#666', textTransform: 'capitalize' }}>
+                            {exp.category} · {new Date(exp.transaction_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </p>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#dc2626' }}>₹{exp.amount.toLocaleString('en-IN')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Budget vs Actual */}
+            {budgets.length > 0 && (
+              <div className="section-card">
+                <div className="section-header">
+                  <BarChart2 size={20} />
+                  <h2>Budget vs Actual</h2>
+                </div>
+                <div className="category-list">
+                  {budgets.map(budget => (
+                    <div key={budget.id} style={{ marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '14px' }}>{budget.category_icon || '📦'}</span>
+                          <span style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>{budget.category_name || 'Budget'}</span>
+                        </div>
+                        <span style={{ fontSize: '13px', color: budget.percentage >= 100 ? '#dc2626' : budget.percentage >= 80 ? '#d97706' : '#16a34a', fontWeight: 600 }}>
+                          ₹{budget.spent.toLocaleString('en-IN')} / ₹{budget.amount.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="progress-bar-container">
+                        <div className="progress-bar" style={{
+                          width: `${Math.min(budget.percentage, 100)}%`,
+                          backgroundColor: budget.percentage >= 100 ? '#dc2626' : budget.percentage >= 80 ? '#d97706' : '#16a34a',
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                        <span style={{ fontSize: '11px', color: '#666' }}>{budget.percentage.toFixed(0)}% used</span>
+                        <span style={{ fontSize: '11px', color: '#666' }}>₹{budget.remaining.toLocaleString('en-IN')} left</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Account Summary */}
             <div className="section-card">
               <div className="section-header">
                 <Wallet size={20} />
                 <h2>Account Summary</h2>
               </div>
-              
               {accountSummary.length === 0 ? (
                 <p className="empty-state">No account data for this period</p>
               ) : (
@@ -231,28 +465,22 @@ const Reports: React.FC = () => {
                         <th className="text-right">Income</th>
                         <th className="text-right">Expense</th>
                         <th className="text-right">Net</th>
-                        <th className="text-right">Transactions</th>
+                        <th className="text-right">Txns</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {accountSummary.map((account) => (
+                      {accountSummary.map(account => (
                         <tr key={account.account_id}>
                           <td>
                             <div className="account-name">{account.account_name}</div>
                             <div className="account-type">{account.account_type}</div>
                           </td>
-                          <td className="text-right amount-income">
-                            ₹{account.total_income.toLocaleString('en-IN')}
-                          </td>
-                          <td className="text-right amount-expense">
-                            ₹{account.total_expense.toLocaleString('en-IN')}
-                          </td>
+                          <td className="text-right amount-income">₹{account.total_income.toLocaleString('en-IN')}</td>
+                          <td className="text-right amount-expense">₹{account.total_expense.toLocaleString('en-IN')}</td>
                           <td className={`text-right ${account.net_change >= 0 ? 'amount-net-positive' : 'amount-net-negative'}`}>
                             ₹{Math.abs(account.net_change).toLocaleString('en-IN')}
                           </td>
-                          <td className="text-right">
-                            {account.transaction_count}
-                          </td>
+                          <td className="text-right">{account.transaction_count}</td>
                         </tr>
                       ))}
                     </tbody>
