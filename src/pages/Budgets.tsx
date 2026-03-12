@@ -7,7 +7,7 @@ import './Budgets.css';
 import { alertService } from '../services/alertService';
 import AppHeader from '../components/layout/AppHeader';
 import { theme } from '../theme';
-import { Plus, Wallet, TrendingDown, BarChart2 } from 'lucide-react';
+import { Plus, Wallet, TrendingDown, BarChart2, Edit, Trash2, RefreshCw, RotateCcw, AlertTriangle, AlertCircle, CheckCircle, Package } from 'lucide-react';
 
 const Budgets: React.FC = () => {
   const navigate = useNavigate();
@@ -174,23 +174,49 @@ const Budgets: React.FC = () => {
                 <div key={budget.id} className={`budget-card ${isExpired ? 'expired' : ''}`}>
                   <div className="budget-header">
                     <div className="budget-title">
-                      <span className="budget-icon">{budget.category_icon || '📊'}</span>
+                      {budget.category_icon
+                        ? <span className="budget-icon">{budget.category_icon}</span>
+                        : <Package size={18} color={theme.colors.textMuted} style={{ flexShrink: 0 }} />}
                       <div>
                         <h4>{budget.category_name || 'General Budget'}</h4>
                         <p className="budget-period">{budget.period || 'Monthly'}</p>
                         <div className="budget-features">
-                          {budget.rollover_enabled && <span className="feature-badge rollover">🔄 Roll-over</span>}
-                          {budget.auto_renew && <span className="feature-badge auto-renew">♻️ Auto-renew</span>}
-                          {isExpired && <span className="feature-badge expired">⚠️ Expired</span>}
-                          {isOverBudget && <span className="feature-badge alert-exceeded">🚨 Over Budget</span>}
-                          {isWarning && !isOverBudget && <span className="feature-badge alert-warning">⚠️ Alert: {budget.alert_threshold}%</span>}
+                          {budget.rollover_enabled && (
+                            <span className="feature-badge rollover" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <RefreshCw size={10} /> Roll-over
+                            </span>
+                          )}
+                          {budget.auto_renew && (
+                            <span className="feature-badge auto-renew" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <RotateCcw size={10} /> Auto-renew
+                            </span>
+                          )}
+                          {isExpired && (
+                            <span className="feature-badge expired" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <AlertTriangle size={10} /> Expired
+                            </span>
+                          )}
+                          {isOverBudget && (
+                            <span className="feature-badge alert-exceeded" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <AlertCircle size={10} /> Over Budget
+                            </span>
+                          )}
+                          {isWarning && !isOverBudget && (
+                            <span className="feature-badge alert-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <AlertTriangle size={10} /> Alert: {budget.alert_threshold}%
+                            </span>
+                          )}
                         </div>
                         {(budget.rollover_amount ?? 0) > 0 && <p className="rollover-amount">+{formatCurrency(budget.rollover_amount!)} from previous period</p>}
                       </div>
                     </div>
                     <div className="budget-actions">
-                      <button onClick={() => handleEdit(budget)} className="btn-edit" title="Edit">✏️</button>
-                      <button onClick={() => handleDelete(budget.id)} className="btn-delete" title="Delete">🗑️</button>
+                      <button onClick={() => handleEdit(budget)} className="btn-edit" title="Edit" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Edit size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(budget.id)} className="btn-delete" title="Delete" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
 
@@ -222,8 +248,12 @@ const Budgets: React.FC = () => {
                     </div>
                     {isExpired && (
                       <div className="budget-quick-actions">
-                        <button onClick={() => handleRenew(budget)} className="btn-renew">🔄 Renew for Next Period</button>
-                        <button onClick={() => handleReset(budget)} className="btn-reset">↻ Reset Budget</button>
+                        <button onClick={() => handleRenew(budget)} className="btn-renew" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                          <RefreshCw size={13} /> Renew for Next Period
+                        </button>
+                        <button onClick={() => handleReset(budget)} className="btn-reset" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                          <RotateCcw size={13} /> Reset Budget
+                        </button>
                       </div>
                     )}
                   </div>

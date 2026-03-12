@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import AppHeader from '../components/layout/AppHeader';
 import { receivablesPayablesService, ReceivablePayable } from '../services/receivablesPayablesService';
-import { Plus, TrendingUp, TrendingDown, AlertCircle, Calendar, User, Phone, Edit, Trash2 } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, AlertCircle, Calendar, User, Phone, Edit, Trash2, Repeat } from 'lucide-react';
 import { theme } from '../theme';
 
 const ReceivablesPayables: React.FC = () => {
@@ -157,7 +157,7 @@ const ReceivablesPayables: React.FC = () => {
           ))}
         </div>
 
-        {/* Add Button — brand green */}
+        {/* Add Button */}
         <button
           onClick={() => { setEditMode(false); setSelectedEntry(null); resetForm(); setShowAddModal(true); }}
           style={{
@@ -189,9 +189,13 @@ const ReceivablesPayables: React.FC = () => {
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 4px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {entry.title}
-                      {entry.is_recurring && <span style={{ marginLeft: '8px', fontSize: '11px', background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>🔄 Recurring</span>}
+                      {entry.is_recurring && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>
+                          <Repeat size={10} /> Recurring
+                        </span>
+                      )}
                     </h3>
                     {entry.description && <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>{entry.description}</p>}
                   </div>
@@ -262,7 +266,7 @@ const ReceivablesPayables: React.FC = () => {
                 <div style={{ marginBottom: '14px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
                     <input type="checkbox" checked={formData.is_recurring} onChange={e => setFormData({ ...formData, is_recurring: e.target.checked })} style={{ width: '16px', height: '16px' }} />
-                    🔄 Recurring Entry
+                    <Repeat size={14} color={theme.colors.primary} /> Recurring Entry
                   </label>
                 </div>
                 {formData.is_recurring && (

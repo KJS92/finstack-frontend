@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import AppHeader from '../components/layout/AppHeader';
 import { assetsService, Asset } from '../services/assetsService';
-import { Plus, Edit, Trash2, TrendingUp, Shield, AlertCircle, Landmark, ArrowDownLeft, ArrowUpRight, Briefcase, Gem } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, Shield, AlertCircle, Landmark, ArrowDownLeft, ArrowUpRight, Briefcase, Gem, PiggyBank, LineChart, BarChart2, Building2, Coins, UserCheck, HeartPulse, Car, FileText, Calendar, BookOpen, Tag, Clock, StickyNote, TrendingDown, BarChart } from 'lucide-react';
 import { theme } from '../theme';
 
 const inputStyle: React.CSSProperties = {
@@ -10,6 +10,24 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid #ddd', borderRadius: '8px',
   fontSize: '14px', boxSizing: 'border-box',
   fontFamily: 'Inter, sans-serif',
+};
+
+// Map category -> Lucide icon component
+const CATEGORY_ICON_MAP: Record<string, React.ReactNode> = {
+  fd: <Landmark size={15} color="#2563eb" />,
+  sip: <TrendingUp size={15} color="#16a34a" />,
+  stocks: <BarChart2 size={15} color="#16a34a" />,
+  mutual_fund: <LineChart size={15} color="#16a34a" />,
+  ppf: <Building2 size={15} color="#7c3aed" />,
+  nps: <UserCheck size={15} color="#7c3aed" />,
+  gold: <Coins size={15} color="#ca8a04" />,
+  real_estate: <Building2 size={15} color="#ea580c" />,
+  other_investment: <PiggyBank size={15} color="#6b7280" />,
+  life_insurance: <HeartPulse size={15} color="#dc2626" />,
+  health_insurance: <Shield size={15} color="#2563eb" />,
+  vehicle_insurance: <Car size={15} color="#ea580c" />,
+  term_insurance: <Shield size={15} color="#7c3aed" />,
+  other_insurance: <FileText size={15} color="#6b7280" />,
 };
 
 const Assets: React.FC = () => {
@@ -28,22 +46,22 @@ const Assets: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
   const investmentCategories = [
-    { value: 'fd', label: '🏦 Fixed Deposit' },
-    { value: 'sip', label: '📈 SIP' },
-    { value: 'stocks', label: '📊 Stocks' },
-    { value: 'mutual_fund', label: '💹 Mutual Fund' },
-    { value: 'ppf', label: '🏛️ PPF' },
-    { value: 'nps', label: '👴 NPS' },
-    { value: 'gold', label: '🥇 Gold' },
-    { value: 'real_estate', label: '🏠 Real Estate' },
-    { value: 'other_investment', label: '💰 Other Investment' }
+    { value: 'fd', label: 'Fixed Deposit' },
+    { value: 'sip', label: 'SIP' },
+    { value: 'stocks', label: 'Stocks' },
+    { value: 'mutual_fund', label: 'Mutual Fund' },
+    { value: 'ppf', label: 'PPF' },
+    { value: 'nps', label: 'NPS' },
+    { value: 'gold', label: 'Gold' },
+    { value: 'real_estate', label: 'Real Estate' },
+    { value: 'other_investment', label: 'Other Investment' },
   ];
   const insuranceCategories = [
-    { value: 'life_insurance', label: '❤️ Life Insurance' },
-    { value: 'health_insurance', label: '🏥 Health Insurance' },
-    { value: 'vehicle_insurance', label: '🚗 Vehicle Insurance' },
-    { value: 'term_insurance', label: '🛡️ Term Insurance' },
-    { value: 'other_insurance', label: '📋 Other Insurance' }
+    { value: 'life_insurance', label: 'Life Insurance' },
+    { value: 'health_insurance', label: 'Health Insurance' },
+    { value: 'vehicle_insurance', label: 'Vehicle Insurance' },
+    { value: 'term_insurance', label: 'Term Insurance' },
+    { value: 'other_insurance', label: 'Other Insurance' },
   ];
 
   const [formData, setFormData] = useState({
@@ -132,14 +150,12 @@ const Assets: React.FC = () => {
 
   const currentCategories = activeTab === 'investment' ? investmentCategories : insuranceCategories;
 
-  // Summary card definitions — Row 1 (assets)
   const row1 = [
     { label: 'Investments', value: summary.totalInvestments, accent: '#16a34a', bg: '#f0fdf4', textColor: '#14532d', Icon: TrendingUp },
     { label: 'Insurance', value: summary.totalInsurance, accent: '#2563eb', bg: '#eff6ff', textColor: '#1e3a8a', Icon: Shield },
     { label: 'Bank Balance', value: summary.totalBankBalance, accent: '#16a34a', bg: '#f0fdf4', textColor: '#14532d', Icon: Landmark },
     { label: 'Receivables', value: summary.totalReceivables, accent: '#16a34a', bg: '#f0fdf4', textColor: '#14532d', Icon: ArrowDownLeft },
   ];
-  // Row 2 (liabilities + totals)
   const row2 = [
     { label: 'Payables', value: summary.totalPayables, accent: '#dc2626', bg: '#fef2f2', textColor: '#7f1d1d', Icon: ArrowUpRight },
     { label: 'Total Liabilities', value: summary.totalLiabilities, accent: '#dc2626', bg: '#fef2f2', textColor: '#7f1d1d', Icon: AlertCircle },
@@ -174,11 +190,9 @@ const Assets: React.FC = () => {
 
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 16px 80px' }}>
 
-        {/* Row 1 — 4 asset cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '12px' }}>
           {row1.map(c => <SummaryCard key={c.label} {...c} />)}
         </div>
-        {/* Row 2 — 4 liability/total cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
           {row2.map(c => <SummaryCard key={c.label} {...c} />)}
         </div>
@@ -192,7 +206,10 @@ const Assets: React.FC = () => {
             </div>
             {summary.upcomingMaturities.map(asset => (
               <div key={asset.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #fed7aa', fontSize: '14px' }}>
-                <span>{assetsService.getCategoryIcon(asset.category)} {asset.name}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {CATEGORY_ICON_MAP[asset.category] || <Briefcase size={15} color="#6b7280" />}
+                  {asset.name}
+                </span>
                 <span style={{ color: '#c2410c', fontWeight: 600 }}>{getDaysToMaturity(asset.maturity_date!)} days left</span>
               </div>
             ))}
@@ -209,8 +226,11 @@ const Assets: React.FC = () => {
               fontWeight: activeTab === tab ? 700 : 400,
               cursor: 'pointer', fontSize: '15px', fontFamily: 'Inter, sans-serif',
               transition: 'all 0.15s',
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
             }}>
-              {tab === 'investment' ? '📈 Investments' : '🛡️ Insurance'}
+              {tab === 'investment'
+                ? <><TrendingUp size={15} /> Investments</>
+                : <><Shield size={15} /> Insurance</>}
             </button>
           ))}
         </div>
@@ -248,11 +268,11 @@ const Assets: React.FC = () => {
                 padding: '20px', borderLeft: `3px solid ${activeTab === 'investment' ? '#16a34a' : '#2563eb'}`,
                 boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
               }}>
-                {/* Card Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
                   <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 6px' }}>
-                      {assetsService.getCategoryIcon(asset.category)} {asset.name}
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {CATEGORY_ICON_MAP[asset.category] || <Briefcase size={15} color="#6b7280" />}
+                      {asset.name}
                     </h3>
                     <span style={{ fontSize: '11px', background: '#f3f4f6', color: '#374151', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>
                       {assetsService.getCategoryLabel(asset.category)}
@@ -268,7 +288,6 @@ const Assets: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Detail tiles */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '12px' }}>
                   <div style={{ background: '#f9fafb', padding: '10px 12px', borderRadius: '8px' }}>
                     <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Current Value</div>
@@ -296,18 +315,26 @@ const Assets: React.FC = () => {
                   )}
                 </div>
 
-                {/* Meta row */}
+                {/* Meta row — Lucide icons replace emoji */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '13px', color: '#6b7280' }}>
-                  {asset.institution_name && <span>🏦 {asset.institution_name}</span>}
-                  {asset.policy_number && <span>🔖 {asset.policy_number}</span>}
-                  {asset.purchase_date && <span>📅 Purchased: {new Date(asset.purchase_date).toLocaleDateString('en-IN')}</span>}
+                  {asset.institution_name && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><Landmark size={13} />{asset.institution_name}</span>
+                  )}
+                  {asset.policy_number && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><Tag size={13} />{asset.policy_number}</span>
+                  )}
+                  {asset.purchase_date && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><Calendar size={13} />Purchased: {new Date(asset.purchase_date).toLocaleDateString('en-IN')}</span>
+                  )}
                   {asset.maturity_date && (
-                    <span style={{ color: getDaysToMaturity(asset.maturity_date) <= 30 ? '#ea580c' : '#6b7280', fontWeight: getDaysToMaturity(asset.maturity_date) <= 30 ? 600 : 400 }}>
-                      ⏳ Matures: {new Date(asset.maturity_date).toLocaleDateString('en-IN')}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: getDaysToMaturity(asset.maturity_date) <= 30 ? '#ea580c' : '#6b7280', fontWeight: getDaysToMaturity(asset.maturity_date) <= 30 ? 600 : 400 }}>
+                      <Clock size={13} />Matures: {new Date(asset.maturity_date).toLocaleDateString('en-IN')}
                       {getDaysToMaturity(asset.maturity_date) <= 30 && ` (${getDaysToMaturity(asset.maturity_date)} days left!)`}
                     </span>
                   )}
-                  {asset.notes && <span>📝 {asset.notes}</span>}
+                  {asset.notes && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><StickyNote size={13} />{asset.notes}</span>
+                  )}
                 </div>
               </div>
             ))}
