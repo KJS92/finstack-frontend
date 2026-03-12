@@ -53,6 +53,10 @@ const BottomNav: React.FC = () => {
           {/* Backdrop */}
           <div
             onClick={() => setShowMore(false)}
+            role="button"
+            aria-label="Close menu"         // ✅ Added
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && setShowMore(false)}
             style={{
               position: 'fixed',
               inset: 0,
@@ -62,18 +66,21 @@ const BottomNav: React.FC = () => {
           />
 
           {/* Drawer */}
-          <div style={{
-            position: 'fixed',
-            bottom: '64px',
-            left: 0,
-            right: 0,
-            backgroundColor: theme.colors.card,
-            borderTop: `1px solid ${theme.colors.border}`,
-            borderRadius: '20px 20px 0 0',
-            padding: '20px 16px',
-            zIndex: 150,
-            fontFamily: 'Inter, sans-serif',
-          }}>
+          <div
+            role="dialog"
+            aria-label="More navigation options"   // ✅ Added
+            style={{
+              position: 'fixed',
+              bottom: '64px',
+              left: 0,
+              right: 0,
+              backgroundColor: theme.colors.card,
+              borderTop: `1px solid ${theme.colors.border}`,
+              borderRadius: '20px 20px 0 0',
+              padding: '20px 16px',
+              zIndex: 150,
+              fontFamily: 'Inter, sans-serif',
+            }}>
             {/* Drawer handle */}
             <div style={{
               width: '36px',
@@ -86,6 +93,7 @@ const BottomNav: React.FC = () => {
             {/* Close button */}
             <button
               onClick={() => setShowMore(false)}
+              aria-label="Close more menu"    // ✅ Added
               style={{
                 position: 'absolute',
                 top: '16px',
@@ -124,6 +132,8 @@ const BottomNav: React.FC = () => {
                   <button
                     key={item.path}
                     onClick={() => handleNavClick(item.path)}
+                    aria-label={`Go to ${item.label}`}    // ✅ Added
+                    aria-current={active ? 'page' : undefined}  // ✅ Added
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -167,21 +177,23 @@ const BottomNav: React.FC = () => {
       )}
 
       {/* ── Bottom Nav Bar ────────────────────────────── */}
-      <nav style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '64px',
-        backgroundColor: theme.colors.card,
-        borderTop: `1px solid ${theme.colors.border}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        zIndex: 200,
-        fontFamily: 'Inter, sans-serif',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
+      <nav
+        aria-label="Main navigation"    // ✅ Added
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '64px',
+          backgroundColor: theme.colors.card,
+          borderTop: `1px solid ${theme.colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          zIndex: 200,
+          fontFamily: 'Inter, sans-serif',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
         className="bottom-nav"
       >
         {mainNav.map(item => {
@@ -196,6 +208,7 @@ const BottomNav: React.FC = () => {
               <button
                 key="add"
                 onClick={() => handleNavClick(item.path)}
+                aria-label="Add new transaction"   // ✅ Added
                 style={{
                   width: '48px',
                   height: '48px',
@@ -219,6 +232,8 @@ const BottomNav: React.FC = () => {
             <button
               key={item.label}
               onClick={() => handleNavClick(item.path)}
+              aria-label={`Go to ${item.label}`}         // ✅ Added
+              aria-current={active ? 'page' : undefined} // ✅ Added
               style={{
                 display: 'flex',
                 flexDirection: 'column',
