@@ -21,8 +21,7 @@
     "jspdf-autotable": "^3.8.2"
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0",
-    "@types/jspdf-autotable": "^3.5.3"
+    "@craco/craco": "^7.1.0"
   },
   "scripts": {
     "start": "craco start",
