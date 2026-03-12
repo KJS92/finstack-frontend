@@ -10,7 +10,7 @@ import { pdfExportService } from '../services/pdfExportService';
 import Toast from '../components/Toast';
 import './TransactionsList.css';
 import AppHeader from '../components/layout/AppHeader';
-import { Filter, X, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { Filter, X, ChevronDown, ChevronUp, Download, List, LayoutGrid, Sparkles } from 'lucide-react';
 
 type SortField = 'date' | 'amount' | 'description';
 type SortDir = 'asc' | 'desc';
@@ -32,7 +32,6 @@ const TransactionsList: React.FC = () => {
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  // Filters
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -43,11 +42,9 @@ const TransactionsList: React.FC = () => {
   const [minAmount, setMinAmount] = useState<string>('');
   const [maxAmount, setMaxAmount] = useState<string>('');
 
-  // Sort
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  // ── Lifecycle
   useEffect(() => { checkUser(); loadData(); }, []);
 
   useEffect(() => {
@@ -99,23 +96,18 @@ const TransactionsList: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  // ── Computed filtered + sorted list
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
-
     if (selectedType !== 'all') filtered = filtered.filter(t => t.transaction_type === selectedType);
     if (selectedCategory !== 'all') filtered = filtered.filter(t => t.category_id === selectedCategory);
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(t =>
         t.description?.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q)
       );
     }
-
     if (minAmount !== '') filtered = filtered.filter(t => t.amount >= parseFloat(minAmount));
     if (maxAmount !== '') filtered = filtered.filter(t => t.amount <= parseFloat(maxAmount));
-
     if (dateRange !== 'all') {
       const now = new Date();
       let fs: Date | null = null, fe: Date | null = null;
@@ -137,7 +129,6 @@ const TransactionsList: React.FC = () => {
         });
       }
     }
-
     filtered.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'date') cmp = new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime();
@@ -145,17 +136,12 @@ const TransactionsList: React.FC = () => {
       else if (sortField === 'description') cmp = (a.description || '').localeCompare(b.description || '');
       return sortDir === 'asc' ? cmp : -cmp;
     });
-
     return filtered;
   }, [transactions, selectedType, selectedCategory, searchQuery, minAmount, maxAmount, dateRange, startDate, endDate, sortField, sortDir]);
 
   const activeFilterCount = useMemo(() => [
-    selectedAccount !== 'all',
-    selectedCategory !== 'all',
-    selectedType !== 'all',
-    searchQuery.trim() !== '',
-    dateRange !== 'all',
-    minAmount !== '' || maxAmount !== '',
+    selectedAccount !== 'all', selectedCategory !== 'all', selectedType !== 'all',
+    searchQuery.trim() !== '', dateRange !== 'all', minAmount !== '' || maxAmount !== '',
   ].filter(Boolean).length, [selectedAccount, selectedCategory, selectedType, searchQuery, dateRange, minAmount, maxAmount]);
 
   const summary = useMemo(() => ({
@@ -164,37 +150,26 @@ const TransactionsList: React.FC = () => {
     debits: filteredTransactions.filter(t => t.transaction_type === 'debit').reduce((s, t) => s + t.amount, 0),
   }), [filteredTransactions]);
 
-  // ── PDF Export
   const handleExportPDF = () => {
-    if (filteredTransactions.length === 0) {
-      setToast({ message: 'No transactions to export.', type: 'info' });
-      return;
-    }
+    if (filteredTransactions.length === 0) { setToast({ message: 'No transactions to export.', type: 'info' }); return; }
     setExporting(true);
     try {
       pdfExportService.exportTransactions({
-        transactions: filteredTransactions,
-        accounts,
-        categories,
+        transactions: filteredTransactions, accounts, categories,
         filters: {
           accountName: selectedAccount === 'all' ? 'All Accounts' : (accounts.find(a => a.id === selectedAccount)?.name || 'Account'),
           categoryName: selectedCategory === 'all' ? 'All Categories' : (categories.find(c => c.id === selectedCategory)?.name || 'Category'),
           typeName: selectedType === 'all' ? 'All Types' : selectedType === 'credit' ? 'Income' : 'Expense',
-          dateLabel: getDateRangeLabel(),
-          searchQuery,
+          dateLabel: getDateRangeLabel(), searchQuery,
         },
-        summary,
-        generatedBy: userEmail,
+        summary, generatedBy: userEmail,
       });
       setToast({ message: `Exported ${filteredTransactions.length} transactions as PDF!`, type: 'success' });
     } catch (err: any) {
       setToast({ message: 'PDF export failed: ' + err.message, type: 'error' });
-    } finally {
-      setExporting(false);
-    }
+    } finally { setExporting(false); }
   };
 
-  // ── Handlers
   const handleEdit = (t: Transaction) => setEditingTransaction(t);
   const handleEditClose = () => setEditingTransaction(null);
   const handleEditSave = async () => { setEditingTransaction(null); await loadTransactions(); };
@@ -241,7 +216,6 @@ const TransactionsList: React.FC = () => {
     } finally { setBulkCategorizing(false); }
   };
 
-  // ── Formatters
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(n);
 
@@ -254,9 +228,9 @@ const TransactionsList: React.FC = () => {
   };
 
   const getCategoryInfo = (categoryId: string | null) => {
-    if (!categoryId) return { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
+    if (!categoryId) return { name: 'Uncategorized', icon: '?', color: '#6B7280' };
     const cat = categories.find(c => c.id === categoryId);
-    return cat ? { name: cat.name, icon: cat.icon, color: cat.color } : { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
+    return cat ? { name: cat.name, icon: cat.icon, color: cat.color } : { name: 'Uncategorized', icon: '?', color: '#6B7280' };
   };
 
   const getDateRangeLabel = () => {
@@ -300,7 +274,7 @@ const TransactionsList: React.FC = () => {
       </div>
 
       {/* Filter Panel */}
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', marginBottom: '16px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', margin: '0 20px 16px' }}>
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', margin: '0 20px 16px' }}>
         <div onClick={() => setFiltersOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', cursor: 'pointer', userSelect: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Filter size={16} color="#16A34A" />
@@ -325,11 +299,11 @@ const TransactionsList: React.FC = () => {
           <div style={{ padding: '0 20px 20px', borderTop: '1px solid #f3f4f6' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
               <div>
-                <label style={filterLabelStyle}>🔍 Search Description</label>
+                <label style={filterLabelStyle}>Search Description</label>
                 <input type="text" placeholder="e.g. Swiggy, salary..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={filterInputStyle} />
               </div>
               <div>
-                <label style={filterLabelStyle}>↕ Type</label>
+                <label style={filterLabelStyle}>Type</label>
                 <select value={selectedType} onChange={e => setSelectedType(e.target.value)} style={filterInputStyle}>
                   <option value="all">All Types</option>
                   <option value="credit">Income (Credit)</option>
@@ -337,21 +311,21 @@ const TransactionsList: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label style={filterLabelStyle}>🏦 Account</label>
+                <label style={filterLabelStyle}>Account</label>
                 <select value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)} style={filterInputStyle}>
                   <option value="all">All Accounts</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
               <div>
-                <label style={filterLabelStyle}>🏷️ Category</label>
+                <label style={filterLabelStyle}>Category</label>
                 <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} style={filterInputStyle}>
                   <option value="all">All Categories</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label style={filterLabelStyle}>📅 Date Range</label>
+                <label style={filterLabelStyle}>Date Range</label>
                 <select value={dateRange} onChange={e => handleDateRangeChange(e.target.value)} style={filterInputStyle}>
                   <option value="all">All Time</option>
                   <option value="this_month">This Month</option>
@@ -364,7 +338,7 @@ const TransactionsList: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label style={filterLabelStyle}>🔃 Sort By</label>
+                <label style={filterLabelStyle}>Sort By</label>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {(['date', 'amount', 'description'] as SortField[]).map(f => (
                     <button key={f} onClick={() => handleSortChange(f)} style={{ flex: 1, padding: '8px 6px', border: '1px solid', borderColor: sortField === f ? '#16A34A' : '#ddd', borderRadius: '8px', background: sortField === f ? '#DCFCE7' : '#fff', color: sortField === f ? '#15803D' : '#555', fontSize: '12px', fontWeight: sortField === f ? 700 : 400, cursor: 'pointer', textTransform: 'capitalize' }}>
@@ -374,7 +348,7 @@ const TransactionsList: React.FC = () => {
                 </div>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <label style={filterLabelStyle}>💰 Amount Range (₹)</label>
+                <label style={filterLabelStyle}>Amount Range (₹)</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input type="number" placeholder="Min amount" value={minAmount} onChange={e => setMinAmount(e.target.value)} style={{ ...filterInputStyle, flex: 1 }} min="0" />
                   <span style={{ color: '#999', fontSize: '13px' }}>to</span>
@@ -404,25 +378,32 @@ const TransactionsList: React.FC = () => {
 
       {/* View Toggle + Actions */}
       <div className="view-toggle">
-        <button className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>📋 List View</button>
-        <button className={`view-toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`} onClick={() => setViewMode('grouped')}>📊 Group by Category</button>
-        <button onClick={handleBulkCategorize} disabled={bulkCategorizing} style={{ padding: '8px 16px', background: bulkCategorizing ? '#e5e7eb' : '#0F172A', color: bulkCategorizing ? '#999' : '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: bulkCategorizing ? 'not-allowed' : 'pointer' }}>
-          {bulkCategorizing ? 'Categorizing...' : '🤖 Auto-Categorize'}
+        <button
+          className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+          onClick={() => setViewMode('list')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <List size={14} /> List View
         </button>
-
-        {/* Export PDF button */}
+        <button
+          className={`view-toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`}
+          onClick={() => setViewMode('grouped')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <LayoutGrid size={14} /> Group by Category
+        </button>
+        <button
+          onClick={handleBulkCategorize}
+          disabled={bulkCategorizing}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: bulkCategorizing ? '#e5e7eb' : '#0F172A', color: bulkCategorizing ? '#999' : '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: bulkCategorizing ? 'not-allowed' : 'pointer' }}
+        >
+          <Sparkles size={14} />
+          {bulkCategorizing ? 'Categorizing...' : 'Auto-Categorize'}
+        </button>
         <button
           onClick={handleExportPDF}
           disabled={exporting || filteredTransactions.length === 0}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '8px 16px',
-            background: exporting || filteredTransactions.length === 0 ? '#e5e7eb' : '#15803D',
-            color: exporting || filteredTransactions.length === 0 ? '#9ca3af' : '#fff',
-            border: 'none', borderRadius: '8px',
-            fontSize: '13px', fontWeight: 600,
-            cursor: exporting || filteredTransactions.length === 0 ? 'not-allowed' : 'pointer',
-          }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: exporting || filteredTransactions.length === 0 ? '#e5e7eb' : '#15803D', color: exporting || filteredTransactions.length === 0 ? '#9ca3af' : '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: exporting || filteredTransactions.length === 0 ? 'not-allowed' : 'pointer' }}
         >
           <Download size={14} />
           {exporting ? 'Exporting...' : `Export PDF (${filteredTransactions.length})`}
@@ -484,7 +465,7 @@ const TransactionsList: React.FC = () => {
               return (
                 <div key={categoryId} className="category-group">
                   <div className="category-header">
-                    <h3><span style={{ fontSize: '24px' }}>{catInfo.icon}</span> {catInfo.name}<span className="transaction-count"> ({txns.length} transactions)</span></h3>
+                    <h3><span style={{ fontSize: '20px' }}>{catInfo.icon}</span> {catInfo.name}<span className="transaction-count"> ({txns.length} transactions)</span></h3>
                     <span className={`category-total ${total > 0 ? 'debit' : 'credit'}`}>{formatCurrency(Math.abs(total))}</span>
                   </div>
                   <table className="transactions-table">
