@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
-import { profileService, UserProfile } from '../services/profileService';
+import { profileService } from '../services/profileService';
 import { theme } from '../theme';
 import AppHeader from '../components/layout/AppHeader';
-import { User, Lock, Bell, Palette, LogOut, Trash2, ChevronRight, Check } from 'lucide-react';
+import { User, Lock, Bell, Palette, Trash2, ChevronRight, Check } from 'lucide-react';
 
-// ── Reusable Card ───────────────────────────────────────────
+// ── Reusable Card ───────────────────────────────────────────────────────
 const Card: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({ children, style }) => (
   <div style={{
     backgroundColor: theme.colors.card,
@@ -20,7 +20,7 @@ const Card: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }>
   </div>
 );
 
-// ── Section Header ─────────────────────────────────────
+// ── Section Header ──────────────────────────────────────────────────────
 const SectionHeader: React.FC<{ icon: React.ReactNode; title: string }> = ({ icon, title }) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: '8px',
@@ -39,7 +39,7 @@ const SectionHeader: React.FC<{ icon: React.ReactNode; title: string }> = ({ ico
   </div>
 );
 
-// ── Setting Row ───────────────────────────────────────
+// ── Setting Row ─────────────────────────────────────────────────────────
 const SettingRow: React.FC<{
   label: string;
   value?: string;
@@ -84,74 +84,62 @@ const SettingRow: React.FC<{
   </div>
 );
 
-// ── Main Component ──────────────────────────────────────
+// ── Main Component ──────────────────────────────────────────────────────
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState({ accountCount: 0, transactionCount: 0, netWorth: 0, memberSince: '' });
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState('');
 
-  // inline feedback
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // Password form
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
 
-  // Display name
   const [showNameForm, setShowNameForm] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [savingName, setSavingName] = useState(false);
 
-  // Preferences
   const [currency, setCurrency] = useState<'INR' | 'USD' | 'EUR'>('INR');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-  useEffect(() => {
-    checkUser();
-    loadProfile();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
   const showFeedback = (msg: string, type: 'success' | 'error') => {
     setFeedback({ msg, type });
     setTimeout(() => setFeedback(null), 3500);
   };
 
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) navigate('/auth');
-    else setUserEmail(session.user.email || '');
-  };
-
-  const loadProfile = async () => {
+  const loadAll = async () => {
     try {
       setLoading(true);
-      const profileData = await profileService.getProfile();
-      const statsData = await profileService.getAccountStats();
-      setProfile(profileData);
-      setDisplayName(profileData.full_name || profileData.email?.split('@')[0] || '');
-
-      // Load transaction count + net worth from supabase directly
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const [{ count: txnCount }, { data: accounts }, { data: assets }] = await Promise.all([
-          supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-          supabase.from('accounts').select('balance, type').eq('user_id', user.id),
-          supabase.from('assets').select('current_value').eq('user_id', user.id).eq('is_active', true),
-        ]);
-        const bankBalance = accounts?.filter(a => a.type !== 'credit_card').reduce((s, a) => s + Number(a.balance), 0) || 0;
-        const creditLiability = accounts?.filter(a => a.type === 'credit_card').reduce((s, a) => s + Number(a.balance), 0) || 0;
-        const totalAssets = assets?.reduce((s, a) => s + Number(a.current_value), 0) || 0;
-        setStats({
-          accountCount: statsData.accountCount,
-          transactionCount: txnCount || 0,
-          netWorth: bankBalance + totalAssets - creditLiability,
-          memberSince: statsData.memberSince,
-        });
-      }
+      if (!user) { navigate('/auth'); return; }
+
+      setUserEmail(user.email || '');
+      // full_name lives in user_metadata (set via updateUser({ data: { full_name } }))
+      setDisplayName(user.user_metadata?.full_name || user.email?.split('@')[0] || '');
+
+      const statsData = await profileService.getAccountStats();
+
+      const [{ count: txnCount }, { data: accounts }, { data: assets }] = await Promise.all([
+        supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('accounts').select('balance, type').eq('user_id', user.id),
+        supabase.from('assets').select('current_value').eq('user_id', user.id).eq('is_active', true),
+      ]);
+
+      const bankBalance = accounts?.filter(a => a.type !== 'credit_card').reduce((s, a) => s + Number(a.balance), 0) || 0;
+      const creditLiability = accounts?.filter(a => a.type === 'credit_card').reduce((s, a) => s + Number(a.balance), 0) || 0;
+      const totalAssets = assets?.reduce((s, a) => s + Number(a.current_value), 0) || 0;
+
+      setStats({
+        accountCount: statsData.accountCount,
+        transactionCount: txnCount || 0,
+        netWorth: bankBalance + totalAssets - creditLiability,
+        memberSince: statsData.memberSince,
+      });
     } catch (err: any) {
       showFeedback(err.message, 'error');
     } finally {
@@ -211,11 +199,7 @@ const Profile: React.FC = () => {
   );
 
   return (
-    <div style={{
-      backgroundColor: theme.colors.background,
-      minHeight: '100vh',
-      fontFamily: 'Inter, sans-serif',
-    }}>
+    <div style={{ backgroundColor: theme.colors.background, minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
       <AppHeader title="Profile & Settings" userEmail={userEmail} activePage="profile" />
 
       <div style={{ padding: '20px 16px 80px', maxWidth: '640px', margin: '0 auto' }}>
@@ -237,7 +221,7 @@ const Profile: React.FC = () => {
           </div>
         )}
 
-        {/* ── Avatar + Identity ── */}
+        {/* Avatar + Identity */}
         <Card style={{ marginBottom: '16px', padding: '24px', textAlign: 'center' }}>
           <div style={{
             width: '72px', height: '72px',
@@ -248,17 +232,10 @@ const Profile: React.FC = () => {
           }}>
             <span style={{ fontSize: '26px', fontWeight: 700, color: '#fff' }}>{initials}</span>
           </div>
-          <h2 style={{
-            margin: '0 0 4px',
-            fontSize: theme.fontSizes.heading2,
-            fontWeight: theme.fontWeights.bold,
-            color: theme.colors.textPrimary,
-          }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: theme.fontSizes.heading2, fontWeight: theme.fontWeights.bold, color: theme.colors.textPrimary }}>
             {displayName || userEmail.split('@')[0]}
           </h2>
-          <p style={{ margin: '0 0 4px', fontSize: theme.fontSizes.label, color: theme.colors.textMuted }}>
-            {userEmail}
-          </p>
+          <p style={{ margin: '0 0 4px', fontSize: theme.fontSizes.label, color: theme.colors.textMuted }}>{userEmail}</p>
           {stats.memberSince && (
             <p style={{ margin: 0, fontSize: theme.fontSizes.caption, color: theme.colors.textMuted }}>
               Member since {formatDate(stats.memberSince)}
@@ -266,20 +243,15 @@ const Profile: React.FC = () => {
           )}
         </Card>
 
-        {/* ── Stats Row ── */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '10px', marginBottom: '16px',
-        }}>
+        {/* Stats Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
           {[
             { label: 'Accounts', value: stats.accountCount.toString() },
             { label: 'Transactions', value: stats.transactionCount.toLocaleString('en-IN') },
             { label: 'Net Worth', value: formatINR(stats.netWorth) },
           ].map(stat => (
             <Card key={stat.label} style={{ padding: '14px', textAlign: 'center' }}>
-              <p style={{ margin: '0 0 4px', fontSize: theme.fontSizes.caption, color: theme.colors.textSecondary }}>
-                {stat.label}
-              </p>
+              <p style={{ margin: '0 0 4px', fontSize: theme.fontSizes.caption, color: theme.colors.textSecondary }}>{stat.label}</p>
               <p style={{
                 margin: 0,
                 fontSize: stat.label === 'Net Worth' ? '13px' : theme.fontSizes.heading2,
@@ -292,15 +264,11 @@ const Profile: React.FC = () => {
           ))}
         </div>
 
-        {/* ── Account Settings ── */}
+        {/* Account Settings */}
         <Card style={{ marginBottom: '16px' }}>
           <SectionHeader icon={<User size={16} />} title="Account" />
 
-          <SettingRow
-            label="Display Name"
-            value={displayName || 'Not set'}
-            onClick={() => setShowNameForm(v => !v)}
-          />
+          <SettingRow label="Display Name" value={displayName || 'Not set'} onClick={() => setShowNameForm(v => !v)} />
           {showNameForm && (
             <div style={{ padding: '12px 16px', background: theme.colors.borderSubtle }}>
               <input
@@ -317,33 +285,22 @@ const Profile: React.FC = () => {
                 }}
               />
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={handleNameSave}
-                  disabled={savingName}
-                  style={{
-                    flex: 1, padding: '10px',
-                    background: theme.colors.btnPrimary,
-                    color: '#fff', border: 'none',
-                    borderRadius: theme.radius.md,
-                    fontWeight: theme.fontWeights.semibold,
-                    fontSize: theme.fontSizes.label,
-                    cursor: 'pointer',
-                  }}
-                >
+                <button onClick={handleNameSave} disabled={savingName} style={{
+                  flex: 1, padding: '10px',
+                  background: theme.colors.btnPrimary, color: '#fff',
+                  border: 'none', borderRadius: theme.radius.md,
+                  fontWeight: theme.fontWeights.semibold,
+                  fontSize: theme.fontSizes.label, cursor: 'pointer',
+                }}>
                   {savingName ? 'Saving...' : 'Save Name'}
                 </button>
-                <button
-                  onClick={() => setShowNameForm(false)}
-                  style={{
-                    padding: '10px 16px',
-                    background: 'transparent',
-                    color: theme.colors.textSecondary,
-                    border: `1px solid ${theme.colors.border}`,
-                    borderRadius: theme.radius.md,
-                    fontSize: theme.fontSizes.label,
-                    cursor: 'pointer',
-                  }}
-                >
+                <button onClick={() => setShowNameForm(false)} style={{
+                  padding: '10px 16px', background: 'transparent',
+                  color: theme.colors.textSecondary,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.radius.md,
+                  fontSize: theme.fontSizes.label, cursor: 'pointer',
+                }}>
                   Cancel
                 </button>
               </div>
@@ -353,19 +310,13 @@ const Profile: React.FC = () => {
           <SettingRow label="Email Address" value={userEmail} disabled />
         </Card>
 
-        {/* ── Security ── */}
+        {/* Security */}
         <Card style={{ marginBottom: '16px' }}>
           <SectionHeader icon={<Lock size={16} />} title="Security" />
-
-          <SettingRow
-            label="Change Password"
-            value="Update your account password"
-            onClick={() => setShowPasswordForm(v => !v)}
-          />
+          <SettingRow label="Change Password" value="Update your account password" onClick={() => setShowPasswordForm(v => !v)} />
           {showPasswordForm && (
             <form onSubmit={handlePasswordChange} style={{
-              padding: '14px 16px',
-              background: theme.colors.borderSubtle,
+              padding: '14px 16px', background: theme.colors.borderSubtle,
               display: 'flex', flexDirection: 'column', gap: '10px',
             }}>
               {[{ label: 'New Password', val: newPassword, set: setNewPassword },
@@ -375,11 +326,9 @@ const Profile: React.FC = () => {
                     {f.label}
                   </label>
                   <input
-                    type="password"
-                    value={f.val}
+                    type="password" value={f.val}
                     onChange={e => f.set(e.target.value)}
-                    placeholder="••••••••"
-                    required minLength={6}
+                    placeholder="••••••••" required minLength={6}
                     style={{
                       width: '100%', padding: '9px 12px',
                       border: `1px solid ${theme.colors.border}`,
@@ -391,30 +340,22 @@ const Profile: React.FC = () => {
                 </div>
               ))}
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="submit"
-                  disabled={savingPassword}
-                  style={{
-                    flex: 1, padding: '10px',
-                    background: theme.colors.btnPrimary, color: '#fff',
-                    border: 'none', borderRadius: theme.radius.md,
-                    fontWeight: theme.fontWeights.semibold,
-                    fontSize: theme.fontSizes.label, cursor: 'pointer',
-                  }}
-                >
+                <button type="submit" disabled={savingPassword} style={{
+                  flex: 1, padding: '10px',
+                  background: theme.colors.btnPrimary, color: '#fff',
+                  border: 'none', borderRadius: theme.radius.md,
+                  fontWeight: theme.fontWeights.semibold,
+                  fontSize: theme.fontSizes.label, cursor: 'pointer',
+                }}>
                   {savingPassword ? 'Updating...' : 'Update Password'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordForm(false)}
-                  style={{
-                    padding: '10px 16px', background: 'transparent',
-                    color: theme.colors.textSecondary,
-                    border: `1px solid ${theme.colors.border}`,
-                    borderRadius: theme.radius.md,
-                    fontSize: theme.fontSizes.label, cursor: 'pointer',
-                  }}
-                >
+                <button type="button" onClick={() => setShowPasswordForm(false)} style={{
+                  padding: '10px 16px', background: 'transparent',
+                  color: theme.colors.textSecondary,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.radius.md,
+                  fontSize: theme.fontSizes.label, cursor: 'pointer',
+                }}>
                   Cancel
                 </button>
               </div>
@@ -422,11 +363,10 @@ const Profile: React.FC = () => {
           )}
         </Card>
 
-        {/* ── Preferences ── */}
+        {/* Preferences */}
         <Card style={{ marginBottom: '16px' }}>
           <SectionHeader icon={<Palette size={16} />} title="Preferences" />
 
-          {/* Currency */}
           <div style={{
             padding: `14px ${theme.spacing.md}`,
             borderBottom: `1px solid ${theme.colors.borderSubtle}`,
@@ -436,25 +376,19 @@ const Profile: React.FC = () => {
               <p style={{ margin: 0, fontSize: theme.fontSizes.body, fontWeight: theme.fontWeights.medium, color: theme.colors.textPrimary }}>Currency</p>
               <p style={{ margin: '2px 0 0', fontSize: theme.fontSizes.label, color: theme.colors.textMuted }}>Display currency for amounts</p>
             </div>
-            <select
-              value={currency}
-              onChange={e => setCurrency(e.target.value as any)}
-              style={{
-                padding: '7px 10px',
-                border: `1px solid ${theme.colors.border}`,
-                borderRadius: theme.radius.md,
-                fontSize: theme.fontSizes.label,
-                background: '#fff', color: theme.colors.textPrimary,
-                cursor: 'pointer',
-              }}
-            >
+            <select value={currency} onChange={e => setCurrency(e.target.value as any)} style={{
+              padding: '7px 10px',
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.radius.md,
+              fontSize: theme.fontSizes.label,
+              background: '#fff', color: theme.colors.textPrimary, cursor: 'pointer',
+            }}>
               <option value="INR">₹ INR</option>
               <option value="USD">$ USD</option>
               <option value="EUR">€ EUR</option>
             </select>
           </div>
 
-          {/* Notifications toggle */}
           <div style={{
             padding: `14px ${theme.spacing.md}`,
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -463,17 +397,12 @@ const Profile: React.FC = () => {
               <p style={{ margin: 0, fontSize: theme.fontSizes.body, fontWeight: theme.fontWeights.medium, color: theme.colors.textPrimary }}>Notifications</p>
               <p style={{ margin: '2px 0 0', fontSize: theme.fontSizes.label, color: theme.colors.textMuted }}>Due-date reminders & alerts</p>
             </div>
-            <button
-              onClick={() => setNotificationsEnabled(v => !v)}
-              style={{
-                width: '44px', height: '24px',
-                borderRadius: '999px',
-                background: notificationsEnabled ? theme.colors.primary : '#D1D5DB',
-                border: 'none', cursor: 'pointer',
-                position: 'relative', transition: 'background 0.2s',
-                flexShrink: 0,
-              }}
-            >
+            <button onClick={() => setNotificationsEnabled(v => !v)} style={{
+              width: '44px', height: '24px', borderRadius: '999px',
+              background: notificationsEnabled ? theme.colors.primary : '#D1D5DB',
+              border: 'none', cursor: 'pointer',
+              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+            }}>
               <span style={{
                 position: 'absolute', top: '3px',
                 left: notificationsEnabled ? '22px' : '3px',
@@ -486,41 +415,25 @@ const Profile: React.FC = () => {
           </div>
         </Card>
 
-        {/* ── Account Actions ── */}
+        {/* Account Actions */}
         <Card style={{ marginBottom: '16px' }}>
           <SectionHeader icon={<Bell size={16} />} title="Account Actions" />
-          <SettingRow
-            label="Sign Out"
-            value="Sign out of your account"
-            onClick={handleLogout}
-          />
+          <SettingRow label="Sign Out" value="Sign out of your account" onClick={handleLogout} />
         </Card>
 
-        {/* ── Danger Zone ── */}
-        <Card style={{
-          marginBottom: '16px',
-          border: `1px solid #FECDD3`,
-        }}>
+        {/* Danger Zone */}
+        <Card style={{ marginBottom: '16px', border: '1px solid #FECDD3' }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: `${theme.spacing.md} ${theme.spacing.md} ${theme.spacing.sm}`,
-            borderBottom: `1px solid #FFF1F2`,
+            borderBottom: '1px solid #FFF1F2',
           }}>
             <Trash2 size={16} color="#E11D48" />
-            <h3 style={{
-              margin: 0, fontSize: theme.fontSizes.body,
-              fontWeight: theme.fontWeights.semibold,
-              color: '#E11D48',
-            }}>
+            <h3 style={{ margin: 0, fontSize: theme.fontSizes.body, fontWeight: theme.fontWeights.semibold, color: '#E11D48' }}>
               Danger Zone
             </h3>
           </div>
-          <SettingRow
-            label="Delete Account"
-            value="Permanently delete your account and all data"
-            danger
-            disabled
-          />
+          <SettingRow label="Delete Account" value="Permanently delete your account and all data" danger disabled />
         </Card>
 
       </div>
