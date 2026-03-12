@@ -20,8 +20,8 @@ const formatINR = (n: number) =>
 
 const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [userReady, setUserReady] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState('');
   const [rangeOption, setRangeOption] = useState<RangeOption>('this_month');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -38,8 +38,10 @@ const Reports: React.FC = () => {
   // Resolve user once on mount
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setUserReady(true);
+      if (user) {
+        setUserId(user.id);
+        setUserEmail(user.email || '');
+      }
     });
   }, []);
 
@@ -65,13 +67,12 @@ const Reports: React.FC = () => {
     }
   }, [rangeOption, selectedMonth, selectedYear, customStart, customEnd]);
 
-  // Only run after user is confirmed
+  // Only trigger load once userId is resolved
   useEffect(() => {
-    if (!userReady || !user) return;
+    if (!userId) return;
     if (rangeOption === 'custom' && (!customStart || !customEnd)) return;
     loadReports();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userReady, rangeOption, selectedMonth, selectedYear, customStart, customEnd]);
+  }, [userId, rangeOption, selectedMonth, selectedYear, customStart, customEnd]);
 
   const loadReports = async () => {
     try {
@@ -101,59 +102,58 @@ const Reports: React.FC = () => {
   };
 
   const loadTopExpenses = async (startDate: string, endDate: string): Promise<TopExpense[]> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!userId) return [];
     const { data } = await supabase
       .from('transactions').select('description, amount, category, transaction_date')
-      .eq('user_id', user.id).eq('transaction_type', 'debit')
+      .eq('user_id', userId).eq('transaction_type', 'debit')
       .gte('transaction_date', startDate).lte('transaction_date', endDate)
       .order('amount', { ascending: false }).limit(5);
     return data || [];
   };
 
-  // Single query for all 6 months — no more serial loop
+  // Single batched query for all 6 months — replaces 12 serial requests
   const loadMonthlyBarData = async (): Promise<MonthlyBarData[]> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!userId) return [];
     const now = new Date();
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0];
-    const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const batchStart = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0];
+    const batchEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
     const { data } = await supabase
       .from('transactions')
       .select('transaction_date, transaction_type, amount')
-      .eq('user_id', user.id)
-      .gte('transaction_date', sixMonthsAgo)
-      .lte('transaction_date', endOfThisMonth);
+      .eq('user_id', userId)
+      .gte('transaction_date', batchStart)
+      .lte('transaction_date', batchEnd);
 
-    if (!data) return [];
-
-    // Build 6-month buckets client-side
-    const buckets: Record<string, MonthlyBarData> = {};
+    // Build month buckets from single result set
+    const buckets = new Map<string, { income: number; expense: number }>();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      buckets[key] = { month: MONTH_NAMES[d.getMonth()], income: 0, expense: 0 };
+      buckets.set(key, { income: 0, expense: 0 });
     }
 
-    data.forEach(t => {
-      const key = t.transaction_date.slice(0, 7);
-      if (buckets[key]) {
-        if (t.transaction_type === 'credit') buckets[key].income += t.amount;
-        else buckets[key].expense += t.amount;
+    data?.forEach(t => {
+      const key = t.transaction_date.slice(0, 7); // 'YYYY-MM'
+      if (buckets.has(key)) {
+        const b = buckets.get(key)!;
+        if (t.transaction_type === 'credit') b.income += t.amount;
+        else b.expense += t.amount;
       }
     });
 
-    return Object.values(buckets);
+    return Array.from(buckets.entries()).map(([key, vals]) => ({
+      month: MONTH_NAMES[parseInt(key.split('-')[1]) - 1],
+      ...vals,
+    }));
   };
 
   const handleExportCSV = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!userId) return;
     const { startDate, endDate } = getDateRange();
     const { data } = await supabase
       .from('transactions').select('transaction_date, description, category, amount, transaction_type, notes')
-      .eq('user_id', user.id).gte('transaction_date', startDate).lte('transaction_date', endDate)
+      .eq('user_id', userId).gte('transaction_date', startDate).lte('transaction_date', endDate)
       .order('transaction_date', { ascending: false });
     if (!data || data.length === 0) { alert('No transactions found for the selected period.'); return; }
     const headers = ['Date', 'Description', 'Category', 'Type', 'Amount (Rs.)', 'Notes'];
@@ -186,12 +186,11 @@ const Reports: React.FC = () => {
     return Math.max(6, Math.round((val / maxBarValue) * BAR_HEIGHT));
   };
 
-  if (!userReady) return <div className="loading-container">Loading...</div>;
-  if (!user) return <div className="loading-container">Not authenticated</div>;
+  if (!userId) return <div className="loading-container">Loading...</div>;
 
   return (
     <div>
-      <AppHeader title="Reports" userEmail={user.email || ''} activePage="reports" />
+      <AppHeader title="Reports" userEmail={userEmail} activePage="reports" />
       <div className="reports-container">
         {loading ? (
           <div className="loading-container"><div>Loading reports...</div></div>
@@ -250,10 +249,7 @@ const Reports: React.FC = () => {
 
             {/* Summary Cards */}
             {monthlySummary && (
-              <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '12px', marginBottom: '24px',
-              }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
                 {[
                   { label: 'Total Income', value: monthlySummary.totalIncome, accent: '#16a34a', bg: '#f0fdf4', textColor: '#14532d', Icon: ArrowDownRight },
                   { label: 'Total Expense', value: monthlySummary.totalExpense, accent: '#dc2626', bg: '#fef2f2', textColor: '#7f1d1d', Icon: ArrowUpRight },
@@ -399,7 +395,7 @@ const Reports: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {budget.category_icon
                             ? <span style={{ fontSize: '14px' }}>{budget.category_icon}</span>
-                            : <Package size={14} color="#9ca3af" />}
+                            : <Package size={14} color="#6b7280" />}
                           <span style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>{budget.category_name || 'Budget'}</span>
                         </div>
                         <span style={{ fontSize: '13px', color: budget.percentage >= 100 ? '#dc2626' : budget.percentage >= 80 ? '#d97706' : '#16a34a', fontWeight: 600 }}>

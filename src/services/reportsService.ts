@@ -34,176 +34,123 @@ export interface DailySpending {
 }
 
 class ReportsService {
-  // Get monthly summary for a specific month
   async getMonthlySummary(year: number, month: number): Promise<MonthlySummary> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-    
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+    const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
     const { data, error } = await supabase
       .from('transactions')
       .select('transaction_type, amount')
       .eq('user_id', user.id)
-      .gte('transaction_date', startDateStr)
-      .lte('transaction_date', endDateStr);
+      .gte('transaction_date', startDate)
+      .lte('transaction_date', endDate);
 
     if (error) throw error;
 
-    const totalIncome = data
-      ?.filter(t => t.transaction_type === 'credit')
-      .reduce((sum, t) => sum + t.amount, 0) || 0;
-
-    const totalExpense = data
-      ?.filter(t => t.transaction_type === 'debit')
-      .reduce((sum, t) => sum + t.amount, 0) || 0;
+    const totalIncome = data?.filter(t => t.transaction_type === 'credit').reduce((s, t) => s + t.amount, 0) || 0;
+    const totalExpense = data?.filter(t => t.transaction_type === 'debit').reduce((s, t) => s + t.amount, 0) || 0;
 
     return {
       month: `${year}-${String(month).padStart(2, '0')}`,
       totalIncome,
       totalExpense,
       netAmount: totalIncome - totalExpense,
-      transactionCount: data?.length || 0
+      transactionCount: data?.length || 0,
     };
   }
 
-  // Get category breakdown for a date range
-  // Get category breakdown for a date range
-async getCategoryBreakdown(startDate: string, endDate: string): Promise<CategoryBreakdown[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  async getCategoryBreakdown(startDate: string, endDate: string): Promise<CategoryBreakdown[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
 
-  // First get all transactions
-  const { data: transactions, error: txError } = await supabase
-    .from('transactions')
-    .select('amount, category_id')
-    .eq('user_id', user.id)
-    .eq('transaction_type', 'debit')
-    .gte('transaction_date', startDate)
-    .lte('transaction_date', endDate);
+    const [{ data: transactions, error: txError }, { data: categories, error: catError }] = await Promise.all([
+      supabase.from('transactions').select('amount, category_id').eq('user_id', user.id).eq('transaction_type', 'debit').gte('transaction_date', startDate).lte('transaction_date', endDate),
+      supabase.from('categories').select('id, name, icon, color').eq('user_id', user.id),
+    ]);
 
-  if (txError) throw txError;
+    if (txError) throw txError;
+    if (catError) throw catError;
 
-  // Then get all categories
-  const { data: categories, error: catError } = await supabase
-    .from('categories')
-    .select('id, name, icon, color')
-    .eq('user_id', user.id);
+    const categoryMapById = new Map(categories?.map(cat => [cat.id, cat]) || []);
+    const categoryMap = new Map<string, CategoryBreakdown>();
 
-  if (catError) throw catError;
+    transactions?.forEach((transaction: any) => {
+      const categoryId = transaction.category_id || 'uncategorized';
+      const category = categoryMapById.get(categoryId);
+      const categoryName = category?.name || 'Uncategorized';
+      // No emoji fallback — icon comes from DB only
+      const categoryIcon = category?.icon || '';
+      const categoryColor = category?.color || '#9ca3af';
 
-  // Create a map of categories
-  const categoryMapById = new Map(categories?.map(cat => [cat.id, cat]) || []);
+      if (categoryMap.has(categoryId)) {
+        const existing = categoryMap.get(categoryId)!;
+        existing.total_amount += transaction.amount;
+        existing.transaction_count += 1;
+      } else {
+        categoryMap.set(categoryId, {
+          category_id: categoryId,
+          category_name: categoryName,
+          category_icon: categoryIcon,
+          category_color: categoryColor,
+          total_amount: transaction.amount,
+          transaction_count: 1,
+          percentage: 0,
+        });
+      }
+    });
 
-  // Group by category
-  const categoryMap = new Map<string, CategoryBreakdown>();
-  
-  transactions?.forEach((transaction: any) => {
-    const categoryId = transaction.category_id || 'uncategorized';
-    const category = categoryMapById.get(categoryId);
-    const categoryName = category?.name || 'Uncategorized';
-    const categoryIcon = category?.icon || '📦';
-    const categoryColor = category?.color || '#999999';
-
-    if (categoryMap.has(categoryId)) {
-      const existing = categoryMap.get(categoryId)!;
-      existing.total_amount += transaction.amount;
-      existing.transaction_count += 1;
-    } else {
-      categoryMap.set(categoryId, {
-        category_id: categoryId,
-        category_name: categoryName,
-        category_icon: categoryIcon,
-        category_color: categoryColor,
-        total_amount: transaction.amount,
-        transaction_count: 1,
-        percentage: 0
-      });
-    }
-  });
-
-  // Calculate percentages
-  const totalSpending = Array.from(categoryMap.values())
-    .reduce((sum, cat) => sum + cat.total_amount, 0);
-
-  const breakdown = Array.from(categoryMap.values()).map(cat => ({
-    ...cat,
-    percentage: totalSpending > 0 ? (cat.total_amount / totalSpending) * 100 : 0
-  }));
-
-  // Sort by amount descending
-  return breakdown.sort((a, b) => b.total_amount - a.total_amount);
-}
-
-  // Get account-wise summary
-async getAccountSummary(startDate: string, endDate: string): Promise<AccountSummary[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  // First get all transactions
-  const { data: transactions, error: txError } = await supabase
-    .from('transactions')
-    .select('amount, transaction_type, account_id')
-    .eq('user_id', user.id)
-    .gte('transaction_date', startDate)
-    .lte('transaction_date', endDate);
-
-  if (txError) throw txError;
-
-  // Then get all accounts - USING CORRECT COLUMN NAMES
-  const { data: accounts, error: accError } = await supabase
-    .from('accounts')
-    .select('id, name, type, account_number')  // Changed to correct columns
-    .eq('user_id', user.id);
-
-  if (accError) {
-    console.error('Account fetch error:', accError);
-    throw accError;
+    const totalSpending = Array.from(categoryMap.values()).reduce((s, cat) => s + cat.total_amount, 0);
+    return Array.from(categoryMap.values())
+      .map(cat => ({ ...cat, percentage: totalSpending > 0 ? (cat.total_amount / totalSpending) * 100 : 0 }))
+      .sort((a, b) => b.total_amount - a.total_amount);
   }
 
-  // Create a map of accounts
-  const accountMapById = new Map(accounts?.map(acc => [acc.id, acc]) || []);
+  async getAccountSummary(startDate: string, endDate: string): Promise<AccountSummary[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
 
-  // Group by account
-  const accountMap = new Map<string, AccountSummary>();
-  
-  transactions?.forEach((transaction: any) => {
-    const accountId = transaction.account_id || 'unknown';
-    const account = accountMapById.get(accountId);
-    const accountName = account?.name || account?.account_number || 'Unknown Account';  // Use 'name' column
-    const accountType = account?.type || 'unknown';  // Use 'type' column
+    const [{ data: transactions, error: txError }, { data: accounts, error: accError }] = await Promise.all([
+      supabase.from('transactions').select('amount, transaction_type, account_id').eq('user_id', user.id).gte('transaction_date', startDate).lte('transaction_date', endDate),
+      supabase.from('accounts').select('id, name, type, account_number').eq('user_id', user.id),
+    ]);
 
-    if (accountMap.has(accountId)) {
-      const existing = accountMap.get(accountId)!;
-      if (transaction.transaction_type === 'credit') {
-        existing.total_income += transaction.amount;
+    if (txError) throw txError;
+    if (accError) throw accError;
+
+    const accountMapById = new Map(accounts?.map(acc => [acc.id, acc]) || []);
+    const accountMap = new Map<string, AccountSummary>();
+
+    transactions?.forEach((transaction: any) => {
+      const accountId = transaction.account_id || 'unknown';
+      const account = accountMapById.get(accountId);
+      const accountName = account?.name || account?.account_number || 'Unknown Account';
+      const accountType = account?.type || 'unknown';
+
+      if (accountMap.has(accountId)) {
+        const existing = accountMap.get(accountId)!;
+        if (transaction.transaction_type === 'credit') existing.total_income += transaction.amount;
+        else existing.total_expense += transaction.amount;
+        existing.transaction_count += 1;
+        existing.net_change = existing.total_income - existing.total_expense;
       } else {
-        existing.total_expense += transaction.amount;
+        accountMap.set(accountId, {
+          account_id: accountId,
+          account_name: accountName,
+          account_type: accountType,
+          total_income: transaction.transaction_type === 'credit' ? transaction.amount : 0,
+          total_expense: transaction.transaction_type === 'debit' ? transaction.amount : 0,
+          net_change: transaction.transaction_type === 'credit' ? transaction.amount : -transaction.amount,
+          transaction_count: 1,
+        });
       }
-      existing.transaction_count += 1;
-      existing.net_change = existing.total_income - existing.total_expense;
-    } else {
-      accountMap.set(accountId, {
-        account_id: accountId,
-        account_name: accountName,
-        account_type: accountType,
-        total_income: transaction.transaction_type === 'credit' ? transaction.amount : 0,
-        total_expense: transaction.transaction_type === 'debit' ? transaction.amount : 0,
-        net_change: transaction.transaction_type === 'credit' ? transaction.amount : -transaction.amount,
-        transaction_count: 1
-      });
-    }
-  });
+    });
 
-  return Array.from(accountMap.values())
-    .sort((a, b) => b.total_expense - a.total_expense);
-}
-  
-  // Get daily spending trend
+    return Array.from(accountMap.values()).sort((a, b) => b.total_expense - a.total_expense);
+  }
+
   async getDailySpending(startDate: string, endDate: string): Promise<DailySpending[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
@@ -219,22 +166,12 @@ async getAccountSummary(startDate: string, endDate: string): Promise<AccountSumm
 
     if (error) throw error;
 
-    // Group by date
     const dateMap = new Map<string, number>();
-    
-    data?.forEach((transaction) => {
-      const date = transaction.transaction_date;
-      if (dateMap.has(date)) {
-        dateMap.set(date, dateMap.get(date)! + transaction.amount);
-      } else {
-        dateMap.set(date, transaction.amount);
-      }
+    data?.forEach(t => {
+      dateMap.set(t.transaction_date, (dateMap.get(t.transaction_date) || 0) + t.amount);
     });
 
-    return Array.from(dateMap.entries()).map(([date, amount]) => ({
-      date,
-      amount
-    }));
+    return Array.from(dateMap.entries()).map(([date, amount]) => ({ date, amount }));
   }
 }
 
