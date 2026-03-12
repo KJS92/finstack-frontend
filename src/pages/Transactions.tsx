@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// "Transactions" nav item goes directly to the transaction list.
-// The upload (bank statement import) is accessible from the empty state
+// "Transactions" nav item redirects straight to the transaction list.
+// Upload (bank statement import) is accessible from the empty state
 // inside TransactionsList via the "Upload Transactions" button.
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
@@ -10,5 +10,4 @@ const Transactions: React.FC = () => {
   return null;
 };
 
-import React from 'react';
 export default Transactions;
