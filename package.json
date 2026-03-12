@@ -16,10 +16,13 @@
     "papaparse": "5.3.2",
     "lucide-react": "^0.344.0",
     "@types/papaparse": "^5.3.14",
-    "recharts": "^2.12.7"
+    "recharts": "^2.12.7",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2"
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0"
+    "@craco/craco": "^7.1.0",
+    "@types/jspdf-autotable": "^3.5.3"
   },
   "scripts": {
     "start": "craco start",
