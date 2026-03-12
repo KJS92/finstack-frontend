@@ -254,9 +254,9 @@ const TransactionsList: React.FC = () => {
   };
 
   const getCategoryInfo = (categoryId: string | null) => {
-    if (!categoryId) return { name: 'Uncategorized', icon: '\u2753', color: '#6B7280' };
+    if (!categoryId) return { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
     const cat = categories.find(c => c.id === categoryId);
-    return cat ? { name: cat.name, icon: cat.icon, color: cat.color } : { name: 'Uncategorized', icon: '\u2753', color: '#6B7280' };
+    return cat ? { name: cat.name, icon: cat.icon, color: cat.color } : { name: 'Uncategorized', icon: '❓', color: '#6B7280' };
   };
 
   const getDateRangeLabel = () => {
@@ -265,11 +265,11 @@ const TransactionsList: React.FC = () => {
       last_3_months: 'Last 3 Months', last_6_months: 'Last 6 Months',
       this_year: 'This Year', last_year: 'Last Year',
     };
-    if (dateRange === 'custom') return startDate && endDate ? `${formatDate(startDate)} \u2013 ${formatDate(endDate)}` : 'Custom Range';
+    if (dateRange === 'custom') return startDate && endDate ? `${formatDate(startDate)} – ${formatDate(endDate)}` : 'Custom Range';
     return labels[dateRange] || 'All Time';
   };
 
-  const sortIcon = (field: SortField) => sortField === field ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : ' \u2195';
+  const sortIcon = (field: SortField) => sortField === field ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕';
 
   const groupedByCategory = useMemo(() => {
     const grouped: { [key: string]: Transaction[] } = {};
@@ -325,11 +325,11 @@ const TransactionsList: React.FC = () => {
           <div style={{ padding: '0 20px 20px', borderTop: '1px solid #f3f4f6' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
               <div>
-                <label style={filterLabelStyle}>\uD83D\uDD0D Search Description</label>
+                <label style={filterLabelStyle}>🔍 Search Description</label>
                 <input type="text" placeholder="e.g. Swiggy, salary..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={filterInputStyle} />
               </div>
               <div>
-                <label style={filterLabelStyle}>\u2195 Type</label>
+                <label style={filterLabelStyle}>↕ Type</label>
                 <select value={selectedType} onChange={e => setSelectedType(e.target.value)} style={filterInputStyle}>
                   <option value="all">All Types</option>
                   <option value="credit">Income (Credit)</option>
@@ -337,21 +337,21 @@ const TransactionsList: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label style={filterLabelStyle}>\uD83C\uDFE6 Account</label>
+                <label style={filterLabelStyle}>🏦 Account</label>
                 <select value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)} style={filterInputStyle}>
                   <option value="all">All Accounts</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
               <div>
-                <label style={filterLabelStyle}>\uD83C\uDFF7\uFE0F Category</label>
+                <label style={filterLabelStyle}>🏷️ Category</label>
                 <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} style={filterInputStyle}>
                   <option value="all">All Categories</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label style={filterLabelStyle}>\uD83D\uDCC5 Date Range</label>
+                <label style={filterLabelStyle}>📅 Date Range</label>
                 <select value={dateRange} onChange={e => handleDateRangeChange(e.target.value)} style={filterInputStyle}>
                   <option value="all">All Time</option>
                   <option value="this_month">This Month</option>
@@ -364,17 +364,17 @@ const TransactionsList: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label style={filterLabelStyle}>\uD83D\uDD03 Sort By</label>
+                <label style={filterLabelStyle}>🔃 Sort By</label>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {(['date', 'amount', 'description'] as SortField[]).map(f => (
                     <button key={f} onClick={() => handleSortChange(f)} style={{ flex: 1, padding: '8px 6px', border: '1px solid', borderColor: sortField === f ? '#16A34A' : '#ddd', borderRadius: '8px', background: sortField === f ? '#DCFCE7' : '#fff', color: sortField === f ? '#15803D' : '#555', fontSize: '12px', fontWeight: sortField === f ? 700 : 400, cursor: 'pointer', textTransform: 'capitalize' }}>
-                      {f}{sortField === f ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : ''}
+                      {f}{sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                     </button>
                   ))}
                 </div>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <label style={filterLabelStyle}>\uD83D\uDCB0 Amount Range (\u20B9)</label>
+                <label style={filterLabelStyle}>💰 Amount Range (₹)</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input type="number" placeholder="Min amount" value={minAmount} onChange={e => setMinAmount(e.target.value)} style={{ ...filterInputStyle, flex: 1 }} min="0" />
                   <span style={{ color: '#999', fontSize: '13px' }}>to</span>
@@ -395,7 +395,7 @@ const TransactionsList: React.FC = () => {
                 {selectedAccount !== 'all' && <FilterChip label={accounts.find(a => a.id === selectedAccount)?.name || 'Account'} onRemove={() => setSelectedAccount('all')} />}
                 {selectedCategory !== 'all' && <FilterChip label={categories.find(c => c.id === selectedCategory)?.name || 'Category'} onRemove={() => setSelectedCategory('all')} />}
                 {dateRange !== 'all' && <FilterChip label={getDateRangeLabel()} onRemove={() => handleDateRangeChange('all')} />}
-                {(minAmount !== '' || maxAmount !== '') && <FilterChip label={`\u20B9${minAmount || '0'} \u2013 \u20B9${maxAmount || '\u221E'}`} onRemove={() => { setMinAmount(''); setMaxAmount(''); }} />}
+                {(minAmount !== '' || maxAmount !== '') && <FilterChip label={`₹${minAmount || '0'} – ₹${maxAmount || '∞'}`} onRemove={() => { setMinAmount(''); setMaxAmount(''); }} />}
               </div>
             )}
           </div>
@@ -404,10 +404,10 @@ const TransactionsList: React.FC = () => {
 
       {/* View Toggle + Actions */}
       <div className="view-toggle">
-        <button className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>\uD83D\uDCCB List View</button>
-        <button className={`view-toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`} onClick={() => setViewMode('grouped')}>\uD83D\uDCCA Group by Category</button>
+        <button className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>📋 List View</button>
+        <button className={`view-toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`} onClick={() => setViewMode('grouped')}>📊 Group by Category</button>
         <button onClick={handleBulkCategorize} disabled={bulkCategorizing} style={{ padding: '8px 16px', background: bulkCategorizing ? '#e5e7eb' : '#0F172A', color: bulkCategorizing ? '#999' : '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: bulkCategorizing ? 'not-allowed' : 'pointer' }}>
-          {bulkCategorizing ? 'Categorizing...' : '\uD83E\uDD16 Auto-Categorize'}
+          {bulkCategorizing ? 'Categorizing...' : '🤖 Auto-Categorize'}
         </button>
 
         {/* Export PDF button */}
@@ -461,7 +461,7 @@ const TransactionsList: React.FC = () => {
                       <td>{getAccountName(txn.account_id)}</td>
                       <td className="description">{txn.description}</td>
                       <td><span className="category-badge" style={{ backgroundColor: catInfo.color || '#6B7280' }}>{catInfo.icon} {catInfo.name}</span></td>
-                      <td><span className={`type-badge ${txn.transaction_type}`}>{txn.transaction_type === 'credit' ? '\u2193 Credit' : '\u2191 Debit'}</span></td>
+                      <td><span className={`type-badge ${txn.transaction_type}`}>{txn.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}</span></td>
                       <td className={`amount ${txn.transaction_type}`}>{formatCurrency(txn.amount)}</td>
                       <td>{txn.balance ? formatCurrency(txn.balance) : '-'}</td>
                       <td>
@@ -494,7 +494,7 @@ const TransactionsList: React.FC = () => {
                           <td>{formatDate(txn.transaction_date)}</td>
                           <td>{getAccountName(txn.account_id)}</td>
                           <td className="description">{txn.description}</td>
-                          <td><span className={`type-badge ${txn.transaction_type}`}>{txn.transaction_type === 'credit' ? '\u2193 Credit' : '\u2191 Debit'}</span></td>
+                          <td><span className={`type-badge ${txn.transaction_type}`}>{txn.transaction_type === 'credit' ? '↓ Credit' : '↑ Debit'}</span></td>
                           <td className={`amount ${txn.transaction_type}`}>{formatCurrency(txn.amount)}</td>
                           <td>{txn.balance ? formatCurrency(txn.balance) : '-'}</td>
                           <td>
