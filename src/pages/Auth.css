@@ -3,32 +3,34 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
   padding: 20px;
 }
 
 .auth-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 40px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(22, 163, 74, 0.1), 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .auth-title {
-  font-size: 32px;
-  font-weight: bold;
-  color: #667eea;
+  font-size: 30px;
+  font-weight: 800;
+  color: #16a34a;
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
+  letter-spacing: -0.5px;
 }
 
 .auth-subtitle {
-  font-size: 24px;
-  color: #333;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 28px;
 }
 
 .auth-form {
@@ -40,116 +42,129 @@
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .form-group label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
 }
 
 .form-group input {
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 16px;
-  transition: border-color 0.3s;
+  padding: 11px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  background: #fafafa;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+  background: #fff;
 }
 
 .form-group input:disabled {
-  background-color: #f5f5f5;
+  background-color: #f3f4f6;
   cursor: not-allowed;
+  color: #9ca3af;
 }
 
 .auth-button {
-  padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 12px;
+  background: #16a34a;
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  font-weight: 600;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s;
-  margin-top: 10px;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 4px;
+  letter-spacing: 0.2px;
 }
 
 .auth-button:hover:not(:disabled) {
-  transform: translateY(-2px);
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+.auth-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .auth-button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
   transform: none;
 }
 
 .message {
-  margin-top: 20px;
-  padding: 12px;
-  border-radius: 6px;
-  font-size: 14px;
+  margin-top: 16px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 13px;
   text-align: center;
 }
 
 .message.success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background-color: #f0fdf4;
+  color: #14532d;
+  border: 1px solid #bbf7d0;
 }
 
 .message.error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: #fef2f2;
+  color: #7f1d1d;
+  border: 1px solid #fecaca;
 }
 
 .auth-toggle {
   text-align: center;
   margin-top: 20px;
-  color: #666;
-  font-size: 14px;
+  color: #6b7280;
+  font-size: 13px;
 }
 
 .toggle-button {
   background: none;
   border: none;
-  color: #667eea;
-  font-weight: 600;
+  color: #16a34a;
+  font-weight: 700;
   cursor: pointer;
-  text-decoration: underline;
+  text-decoration: none;
   padding: 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .toggle-button:hover:not(:disabled) {
-  color: #764ba2;
+  text-decoration: underline;
+  color: #15803d;
 }
 
 .toggle-button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 @media (max-width: 480px) {
   .auth-card {
-    padding: 30px 20px;
+    padding: 28px 20px;
   }
-  
+
   .auth-title {
-    font-size: 28px;
+    font-size: 26px;
   }
-  
+
   .auth-subtitle {
-    font-size: 20px;
+    font-size: 18px;
   }
 }
+
 .password-label-row {
   display: flex;
   justify-content: space-between;
@@ -159,7 +174,7 @@
 .forgot-password-link {
   background: none;
   border: none;
-  color: #667eea;
+  color: #16a34a;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -169,5 +184,5 @@
 
 .forgot-password-link:hover {
   text-decoration: underline;
-  color: #764ba2;
+  color: #15803d;
 }
