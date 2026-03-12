@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import AppHeader from '../components/layout/AppHeader';
 import { reportsService, MonthlySummary, CategoryBreakdown, AccountSummary, DailySpending } from '../services/reportsService';
 import { budgetService, BudgetWithSpending } from '../services/budgetService';
-import { TrendingUp, TrendingDown, Calendar, PieChart, Wallet, BarChart2, Download, ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Calendar, PieChart, Wallet, BarChart2, Download, ArrowDownRight, ArrowUpRight, Minus, Package } from 'lucide-react';
 import CategoryPieChart from '../components/charts/CategoryPieChart';
 import SpendingTrendChart from '../components/charts/SpendingTrendChart';
 import './Reports.css';
@@ -21,6 +21,7 @@ const formatINR = (n: number) =>
 const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [userReady, setUserReady] = useState(false);
   const [rangeOption, setRangeOption] = useState<RangeOption>('this_month');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -34,8 +35,12 @@ const Reports: React.FC = () => {
   const [topExpenses, setTopExpenses] = useState<TopExpense[]>([]);
   const [budgets, setBudgets] = useState<BudgetWithSpending[]>([]);
 
+  // Resolve user once on mount
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      setUserReady(true);
+    });
   }, []);
 
   const getDateRange = useCallback((): { startDate: string; endDate: string } => {
@@ -60,23 +65,26 @@ const Reports: React.FC = () => {
     }
   }, [rangeOption, selectedMonth, selectedYear, customStart, customEnd]);
 
+  // Only run after user is confirmed
   useEffect(() => {
+    if (!userReady || !user) return;
     if (rangeOption === 'custom' && (!customStart || !customEnd)) return;
     loadReports();
-  }, [rangeOption, selectedMonth, selectedYear, customStart, customEnd]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userReady, rangeOption, selectedMonth, selectedYear, customStart, customEnd]);
 
   const loadReports = async () => {
-    if (!user && !(await supabase.auth.getUser()).data.user) return;
     try {
       setLoading(true);
       const { startDate, endDate } = getDateRange();
-      const [summary, categories, accounts, spending, topExp, budgetData] = await Promise.all([
+      const [summary, categories, accounts, spending, topExp, budgetData, barData] = await Promise.all([
         reportsService.getMonthlySummary(selectedYear, selectedMonth),
         reportsService.getCategoryBreakdown(startDate, endDate),
         reportsService.getAccountSummary(startDate, endDate),
         reportsService.getDailySpending(startDate, endDate),
         loadTopExpenses(startDate, endDate),
         budgetService.getBudgetsWithSpending(startDate, endDate),
+        loadMonthlyBarData(),
       ]);
       setMonthlySummary(summary);
       setCategoryBreakdown(categories);
@@ -84,7 +92,7 @@ const Reports: React.FC = () => {
       setDailySpending(spending);
       setTopExpenses(topExp);
       setBudgets(budgetData);
-      setMonthlyBarData(await loadMonthlyBarData());
+      setMonthlyBarData(barData);
     } catch (error) {
       console.error('Error loading reports:', error);
     } finally {
@@ -103,26 +111,40 @@ const Reports: React.FC = () => {
     return data || [];
   };
 
+  // Single query for all 6 months — no more serial loop
   const loadMonthlyBarData = async (): Promise<MonthlyBarData[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
     const now = new Date();
-    const months: MonthlyBarData[] = [];
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0];
+    const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    const { data } = await supabase
+      .from('transactions')
+      .select('transaction_date, transaction_type, amount')
+      .eq('user_id', user.id)
+      .gte('transaction_date', sixMonthsAgo)
+      .lte('transaction_date', endOfThisMonth);
+
+    if (!data) return [];
+
+    // Build 6-month buckets client-side
+    const buckets: Record<string, MonthlyBarData> = {};
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
-      const [{ data: inc }, { data: exp }] = await Promise.all([
-        supabase.from('transactions').select('amount').eq('user_id', user.id).eq('transaction_type', 'credit').gte('transaction_date', start).lte('transaction_date', end),
-        supabase.from('transactions').select('amount').eq('user_id', user.id).eq('transaction_type', 'debit').gte('transaction_date', start).lte('transaction_date', end),
-      ]);
-      months.push({
-        month: MONTH_NAMES[d.getMonth()],
-        income: inc?.reduce((s, t) => s + t.amount, 0) || 0,
-        expense: exp?.reduce((s, t) => s + t.amount, 0) || 0,
-      });
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      buckets[key] = { month: MONTH_NAMES[d.getMonth()], income: 0, expense: 0 };
     }
-    return months;
+
+    data.forEach(t => {
+      const key = t.transaction_date.slice(0, 7);
+      if (buckets[key]) {
+        if (t.transaction_type === 'credit') buckets[key].income += t.amount;
+        else buckets[key].expense += t.amount;
+      }
+    });
+
+    return Object.values(buckets);
   };
 
   const handleExportCSV = async () => {
@@ -157,16 +179,15 @@ const Reports: React.FC = () => {
     name: cat.category_name, value: cat.total_amount, color: cat.category_color,
   }));
 
-  // Use a log scale floor so small bars are still visible
   const maxBarValue = Math.max(...monthlyBarData.flatMap(m => [m.income, m.expense]), 1);
   const BAR_HEIGHT = 150;
   const getBarPx = (val: number) => {
     if (val <= 0) return 0;
-    // Minimum 6px so tiny values are visible, scale the rest
     return Math.max(6, Math.round((val / maxBarValue) * BAR_HEIGHT));
   };
 
-  if (!user) return <div className="loading-container">Loading...</div>;
+  if (!userReady) return <div className="loading-container">Loading...</div>;
+  if (!user) return <div className="loading-container">Not authenticated</div>;
 
   return (
     <div>
@@ -215,7 +236,6 @@ const Reports: React.FC = () => {
                     <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
                   </div>
                 )}
-                {/* Export CSV — brand green */}
                 <button onClick={handleExportCSV} style={{
                   display: 'flex', alignItems: 'center', gap: '6px',
                   padding: '8px 14px', backgroundColor: '#16a34a', color: '#fff',
@@ -228,7 +248,7 @@ const Reports: React.FC = () => {
               </div>
             </div>
 
-            {/* Summary Cards — compact 3-col row */}
+            {/* Summary Cards */}
             {monthlySummary && (
               <div style={{
                 display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
@@ -377,7 +397,9 @@ const Reports: React.FC = () => {
                     <div key={budget.id} style={{ marginBottom: '16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '14px' }}>{budget.category_icon || '📦'}</span>
+                          {budget.category_icon
+                            ? <span style={{ fontSize: '14px' }}>{budget.category_icon}</span>
+                            : <Package size={14} color="#9ca3af" />}
                           <span style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>{budget.category_name || 'Budget'}</span>
                         </div>
                         <span style={{ fontSize: '13px', color: budget.percentage >= 100 ? '#dc2626' : budget.percentage >= 80 ? '#d97706' : '#16a34a', fontWeight: 600 }}>
