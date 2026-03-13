@@ -41,7 +41,6 @@ const Categories: React.FC = () => {
     init();
   }, [navigate, loadCategories]);
 
-  // Dismiss inline confirm on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setConfirmDeleteId(null); setShowModal(false); } };
     document.addEventListener('keydown', onKey);
@@ -88,7 +87,7 @@ const Categories: React.FC = () => {
   if (loading) return <div className="categories-container"><p>Loading categories...</p></div>;
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: theme.fontFamily }}>
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: theme.fontFamily.base }}>
       <AppHeader title="Categories" userEmail={userEmail} displayName={displayName} activePage="categories" />
 
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px 16px 80px' }}>
@@ -116,7 +115,7 @@ const Categories: React.FC = () => {
               padding: '9px 18px', background: theme.colors.primary,
               color: '#fff', border: 'none', borderRadius: '8px',
               cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-              fontFamily: theme.fontFamily,
+              fontFamily: theme.fontFamily.base,
             }}
           >
             <Plus size={16} /> Add Category
@@ -133,7 +132,6 @@ const Categories: React.FC = () => {
               boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
               transition: 'box-shadow 0.15s',
             }}>
-              {/* Icon bubble */}
               <div style={{
                 width: '46px', height: '46px', borderRadius: '12px',
                 backgroundColor: category.color || '#6B7280',
@@ -143,7 +141,6 @@ const Categories: React.FC = () => {
                 {category.icon}
               </div>
 
-              {/* Name + badge */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '15px', fontWeight: 600, color: '#111827', marginBottom: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {category.name}
@@ -153,11 +150,10 @@ const Categories: React.FC = () => {
                 )}
               </div>
 
-              {/* Actions */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
                 <button
                   onClick={() => handleOpenModal(category)}
-                  style={{ padding: '5px 12px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: theme.fontFamily }}
+                  style={{ padding: '5px 12px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: theme.fontFamily.base }}
                 >
                   Edit
                 </button>
@@ -166,17 +162,17 @@ const Categories: React.FC = () => {
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button
                         onClick={() => handleDelete(category.id)}
-                        style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 700, fontFamily: theme.fontFamily }}
+                        style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 700, fontFamily: theme.fontFamily.base }}
                       >Yes</button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
-                        style={{ padding: '4px 8px', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 600, fontFamily: theme.fontFamily }}
+                        style={{ padding: '4px 8px', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 600, fontFamily: theme.fontFamily.base }}
                       >No</button>
                     </div>
                   ) : (
                     <button
                       onClick={() => handleDelete(category.id)}
-                      style={{ padding: '5px 12px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: theme.fontFamily }}
+                      style={{ padding: '5px 12px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: theme.fontFamily.base }}
                     >
                       Delete
                     </button>
@@ -206,13 +202,11 @@ const Categories: React.FC = () => {
                 <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }} aria-label="Close modal">&times;</button>
               </div>
               <form onSubmit={handleSubmit}>
-                {/* Name */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>Category Name *</label>
-                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Entertainment" style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: theme.fontFamily }} />
+                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Entertainment" style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: theme.fontFamily.base }} />
                 </div>
 
-                {/* Icon Picker */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>Select Icon</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -230,7 +224,6 @@ const Categories: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Colour Picker */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>Select Colour</label>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -248,15 +241,14 @@ const Categories: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Preview */}
                 <div style={{ marginBottom: '20px', padding: '12px 16px', background: '#f9fafb', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: formData.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>{formData.icon}</div>
                   <span style={{ fontSize: '15px', fontWeight: 600, color: '#111827' }}>{formData.name || 'Category Name'}</span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                  <button type="button" onClick={handleCloseModal} style={{ padding: '10px 20px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', fontFamily: theme.fontFamily, fontWeight: 500 }}>Cancel</button>
-                  <button type="submit" style={{ padding: '10px 20px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: theme.fontFamily, fontWeight: 600 }}>{editingCategory ? 'Update' : 'Create'}</button>
+                  <button type="button" onClick={handleCloseModal} style={{ padding: '10px 20px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', fontFamily: theme.fontFamily.base, fontWeight: 500 }}>Cancel</button>
+                  <button type="submit" style={{ padding: '10px 20px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: theme.fontFamily.base, fontWeight: 600 }}>{editingCategory ? 'Update' : 'Create'}</button>
                 </div>
               </form>
             </div>
