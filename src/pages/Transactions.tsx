@@ -6,7 +6,9 @@ import { useNavigate } from 'react-router-dom';
 // inside TransactionsList via the "Upload Transactions" button.
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
-  useEffect(() => { navigate('/transactions-list', { replace: true }); }, []);
+  useEffect(() => {
+    navigate('/transactions-list', { replace: true });
+  }, [navigate]);
   return null;
 };
 
