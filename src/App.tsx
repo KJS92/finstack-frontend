@@ -56,6 +56,10 @@ const LoadingScreen = () => (
   </div>
 );
 
+// BottomNav is 64px tall — banner sits just above it with 8px breathing room
+const BOTTOM_NAV_HEIGHT = 64;
+const BANNER_BOTTOM_OFFSET = `${BOTTOM_NAV_HEIGHT + 8}px`;
+
 function App() {
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -116,7 +120,7 @@ function App() {
         </Suspense>
 
         {showInstallBanner && (
-          <div style={{ position: 'fixed', bottom: '70px', left: '16px', right: '16px', background: '#1f2937', color: 'white', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+          <div style={{ position: 'fixed', bottom: BANNER_BOTTOM_OFFSET, left: '16px', right: '16px', background: '#1f2937', color: 'white', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Smartphone size={20} color="#9ca3af" />
               <div>
