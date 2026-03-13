@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Trash2, CheckCheck } from 'lucide-react';
+import { Bell, Check, Trash2, CheckCheck, AlertTriangle } from 'lucide-react';
 import { alertService, BudgetAlert } from '../../services/alertService';
 import { theme } from '../../theme';
 
@@ -9,7 +9,10 @@ const NotificationDropdown: React.FC = () => {
   const [readCount, setReadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Track whether cleanup has already run this session
+  const cleanupDoneRef = useRef(false);
 
   useEffect(() => {
     loadAlerts();
@@ -22,6 +25,7 @@ const NotificationDropdown: React.FC = () => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        setConfirmClear(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -30,9 +34,13 @@ const NotificationDropdown: React.FC = () => {
 
   const loadAlerts = async () => {
     try {
-      alertService.cleanupOldAlerts().catch(err =>
-        console.error('Cleanup failed:', err)
-      );
+      // Run cleanup only once per session, not on every 30-second poll
+      if (!cleanupDoneRef.current) {
+        cleanupDoneRef.current = true;
+        alertService.cleanupOldAlerts().catch(err =>
+          console.error('Cleanup failed:', err)
+        );
+      }
       const [allAlerts, unreadCnt, readCnt] = await Promise.all([
         alertService.getAlerts(),
         alertService.getUnreadCount(),
@@ -49,7 +57,7 @@ const NotificationDropdown: React.FC = () => {
   const handleMarkAsRead = async (alertId: string) => {
     try {
       await alertService.markAsRead(alertId);
-      loadAlerts();
+      await loadAlerts();
     } catch (error) {
       console.error('Error marking alert as read:', error);
     }
@@ -70,16 +78,21 @@ const NotificationDropdown: React.FC = () => {
   const handleDelete = async (alertId: string) => {
     try {
       await alertService.deleteAlert(alertId);
-      loadAlerts();
+      await loadAlerts();
     } catch (error) {
       console.error('Error deleting alert:', error);
     }
   };
 
   const handleClearAllRead = async () => {
-    if (!window.confirm('Delete all read notifications?')) return;
+    // Use inline confirmation instead of window.confirm (blocked in PWA standalone mode)
+    if (!confirmClear) {
+      setConfirmClear(true);
+      return;
+    }
     try {
       setLoading(true);
+      setConfirmClear(false);
       await alertService.clearAllRead();
       await loadAlerts();
     } catch (error) {
@@ -131,7 +144,10 @@ const NotificationDropdown: React.FC = () => {
     >
       {/* ── Bell Button ──────────────────────────────── */}
       <button
-        onClick={() => setIsOpen(prev => !prev)}
+        onClick={() => { setIsOpen(prev => !prev); setConfirmClear(false); }}
+        aria-label="Notifications"
+        aria-expanded={isOpen}
+        aria-haspopup="true"
         style={{
           position: 'relative',
           background: 'none',
@@ -144,7 +160,6 @@ const NotificationDropdown: React.FC = () => {
           justifyContent: 'center',
           color: theme.colors.textSecondary,
         }}
-        title="Notifications"
       >
         <Bell
           size={20}
@@ -153,24 +168,27 @@ const NotificationDropdown: React.FC = () => {
 
         {/* Unread badge */}
         {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: '2px',
-            right: '2px',
-            backgroundColor: theme.colors.expense,
-            color: '#fff',
-            fontSize: '10px',
-            fontWeight: theme.fontWeights.bold,
-            borderRadius: theme.radius.pill,
-            minWidth: '16px',
-            height: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 4px',
-            fontFamily: 'Inter, sans-serif',
-            lineHeight: 1,
-          }}>
+          <span
+            aria-label={`${unreadCount} unread notifications`}
+            style={{
+              position: 'absolute',
+              top: '2px',
+              right: '2px',
+              backgroundColor: theme.colors.expense,
+              color: '#fff',
+              fontSize: '10px',
+              fontWeight: theme.fontWeights.bold,
+              borderRadius: theme.radius.pill,
+              minWidth: '16px',
+              height: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+              fontFamily: theme.fontFamily.base,
+              lineHeight: 1,
+            }}
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -178,19 +196,23 @@ const NotificationDropdown: React.FC = () => {
 
       {/* ── Dropdown ─────────────────────────────────── */}
       {isOpen && (
-        <div style={{
-          position: 'absolute',
-          top: '40px',
-          right: 0,
-          width: '340px',
-          backgroundColor: theme.colors.card,
-          border: `1px solid ${theme.colors.border}`,
-          borderRadius: theme.radius.xl,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-          zIndex: 300,
-          overflow: 'hidden',
-          fontFamily: 'Inter, sans-serif',
-        }}>
+        <div
+          role="dialog"
+          aria-label="Notifications panel"
+          style={{
+            position: 'absolute',
+            top: '40px',
+            right: 0,
+            width: '340px',
+            backgroundColor: theme.colors.card,
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: theme.radius.xl,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            zIndex: 300,
+            overflow: 'hidden',
+            fontFamily: theme.fontFamily.base,
+          }}
+        >
 
           {/* Header */}
           <div style={{
@@ -223,11 +245,12 @@ const NotificationDropdown: React.FC = () => {
             </div>
 
             {/* Header actions */}
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
                   disabled={loading}
+                  aria-label="Mark all notifications as read"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -240,52 +263,83 @@ const NotificationDropdown: React.FC = () => {
                     cursor: 'pointer',
                     padding: '4px 8px',
                     borderRadius: theme.radius.md,
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: theme.fontFamily.base,
                     opacity: loading ? 0.5 : 1,
                   }}
-                  title="Mark all as read"
                 >
                   <CheckCheck size={13} />
                   Mark all read
                 </button>
               )}
               {readCount > 0 && (
-                <button
-                  onClick={handleClearAllRead}
-                  disabled={loading}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    background: 'none',
-                    border: 'none',
-                    color: theme.colors.textSecondary,
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    borderRadius: theme.radius.md,
-                    fontFamily: 'Inter, sans-serif',
-                    opacity: loading ? 0.5 : 1,
-                  }}
-                  title={`Clear ${readCount} read notifications`}
-                >
-                  <Trash2 size={13} />
-                  Clear read
-                </button>
+                confirmClear ? (
+                  // Inline confirmation — replaces window.confirm (blocked in PWA mode)
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', color: theme.colors.textMuted }}>Sure?</span>
+                    <button
+                      onClick={handleClearAllRead}
+                      disabled={loading}
+                      style={{
+                        background: theme.colors.expense,
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: theme.radius.sm,
+                        padding: '3px 8px',
+                        fontSize: '11px',
+                        fontWeight: theme.fontWeights.semibold,
+                        cursor: 'pointer',
+                        fontFamily: theme.fontFamily.base,
+                      }}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => setConfirmClear(false)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: theme.colors.textMuted,
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        fontFamily: theme.fontFamily.base,
+                        padding: '3px 4px',
+                      }}
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleClearAllRead}
+                    disabled={loading}
+                    aria-label={`Clear ${readCount} read notifications`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'none',
+                      border: 'none',
+                      color: theme.colors.textSecondary,
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      borderRadius: theme.radius.md,
+                      fontFamily: theme.fontFamily.base,
+                      opacity: loading ? 0.5 : 1,
+                    }}
+                  >
+                    <Trash2 size={13} />
+                    Clear read
+                  </button>
+                )
               )}
             </div>
           </div>
 
           {/* Alert List */}
-          <div style={{
-            maxHeight: '360px',
-            overflowY: 'auto',
-          }}>
+          <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
             {alerts.length === 0 ? (
-              <div style={{
-                padding: '40px 16px',
-                textAlign: 'center',
-              }}>
+              <div style={{ padding: '40px 16px', textAlign: 'center' }}>
                 <Bell size={28} color={theme.colors.border} style={{ marginBottom: '10px' }} />
                 <p style={{
                   color: theme.colors.textPrimary,
@@ -295,10 +349,7 @@ const NotificationDropdown: React.FC = () => {
                 }}>
                   All caught up
                 </p>
-                <span style={{
-                  color: theme.colors.textMuted,
-                  fontSize: theme.fontSizes.caption,
-                }}>
+                <span style={{ color: theme.colors.textMuted, fontSize: theme.fontSizes.caption }}>
                   No notifications right now
                 </span>
               </div>
@@ -306,6 +357,7 @@ const NotificationDropdown: React.FC = () => {
               alerts.map((alert, i) => (
                 <div
                   key={alert.id}
+                  role="listitem"
                   style={{
                     display: 'flex',
                     alignItems: 'flex-start',
@@ -318,7 +370,7 @@ const NotificationDropdown: React.FC = () => {
                       ? `1px solid ${theme.colors.borderSubtle}`
                       : 'none',
                     borderLeft: `3px solid ${getAlertColor(alert.alert_type)}`,
-                    transition: 'background-color 0.15s',
+                    transition: theme.transition.fast,
                   }}
                 >
                   {/* Colour dot */}
@@ -333,7 +385,6 @@ const NotificationDropdown: React.FC = () => {
 
                   {/* Content */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Type badge */}
                     <span style={{
                       display: 'inline-block',
                       backgroundColor: `${getAlertColor(alert.alert_type)}18`,
@@ -349,36 +400,25 @@ const NotificationDropdown: React.FC = () => {
                       {getAlertLabel(alert.alert_type)}
                     </span>
                     <p style={{
-                      color: alert.is_read
-                        ? theme.colors.textSecondary
-                        : theme.colors.textPrimary,
+                      color: alert.is_read ? theme.colors.textSecondary : theme.colors.textPrimary,
                       fontSize: theme.fontSizes.label,
-                      fontWeight: alert.is_read
-                        ? theme.fontWeights.regular
-                        : theme.fontWeights.medium,
+                      fontWeight: alert.is_read ? theme.fontWeights.regular : theme.fontWeights.medium,
                       margin: '0 0 3px',
                       lineHeight: 1.4,
                     }}>
                       {alert.message}
                     </p>
-                    <span style={{
-                      color: theme.colors.textMuted,
-                      fontSize: '11px',
-                    }}>
+                    <span style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
                       {formatTime(alert.created_at)}
                     </span>
                   </div>
 
                   {/* Actions */}
-                  <div style={{
-                    display: 'flex',
-                    gap: '4px',
-                    flexShrink: 0,
-                  }}>
+                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                     {!alert.is_read && (
                       <button
                         onClick={() => handleMarkAsRead(alert.id)}
-                        title="Mark as read"
+                        aria-label="Mark as read"
                         style={{
                           background: 'none',
                           border: 'none',
@@ -394,7 +434,7 @@ const NotificationDropdown: React.FC = () => {
                     )}
                     <button
                       onClick={() => handleDelete(alert.id)}
-                      title="Delete"
+                      aria-label="Delete notification"
                       style={{
                         background: 'none',
                         border: 'none',
@@ -421,16 +461,10 @@ const NotificationDropdown: React.FC = () => {
               display: 'flex',
               justifyContent: 'space-between',
             }}>
-              <span style={{
-                color: theme.colors.textMuted,
-                fontSize: '11px',
-              }}>
+              <span style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
                 {unreadCount} unread · {readCount} read
               </span>
-              <span style={{
-                color: theme.colors.textMuted,
-                fontSize: '11px',
-              }}>
+              <span style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
                 Auto-clears after 30 days
               </span>
             </div>
