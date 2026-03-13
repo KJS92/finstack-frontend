@@ -113,7 +113,7 @@ const Budgets: React.FC = () => {
   if (loading) return <div className="dashboard-container"><p>Loading budgets...</p></div>;
 
   return (
-    <div className="dashboard-container" style={{ fontFamily: theme.fontFamily.base }}>
+    <div className="dashboard-container" style={{ fontFamily: theme.fontFamily }}>
       <AppHeader title="Budgets" userEmail={userEmail} displayName={displayName} activePage="budgets" />
 
       {error && (
@@ -125,7 +125,6 @@ const Budgets: React.FC = () => {
         </div>
       )}
 
-      {/* Unified Summary Card */}
       <div style={{ maxWidth: '900px', margin: '24px auto 0', padding: '0 16px' }}>
         <div style={{
           background: '#fff', border: '1px solid #e5e7eb', borderRadius: '16px',
@@ -152,7 +151,6 @@ const Budgets: React.FC = () => {
           ))}
         </div>
 
-        {/* Section Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>Your Budgets</h2>
@@ -164,7 +162,7 @@ const Budgets: React.FC = () => {
                   background: showExpired ? '#fef3c7' : '#f3f4f6',
                   color: showExpired ? '#92400e' : '#6b7280',
                   border: `1px solid ${showExpired ? '#fde68a' : '#e5e7eb'}`,
-                  borderRadius: '20px', cursor: 'pointer', fontFamily: theme.fontFamily.base,
+                  borderRadius: '20px', cursor: 'pointer', fontFamily: theme.fontFamily,
                 }}
               >
                 {showExpired ? `Hide Expired (${expiredBudgets.length})` : `Show Expired (${expiredBudgets.length})`}
@@ -178,7 +176,7 @@ const Budgets: React.FC = () => {
               padding: '9px 18px', background: theme.colors.primary,
               color: '#fff', border: 'none', borderRadius: '8px',
               cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-              fontFamily: theme.fontFamily.base,
+              fontFamily: theme.fontFamily,
             }}
           >
             <Plus size={16} /> Create Budget
@@ -186,12 +184,11 @@ const Budgets: React.FC = () => {
         </div>
       </div>
 
-      {/* Budgets Grid */}
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 16px 80px' }}>
         {visibleBudgets.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             <p style={{ color: '#9ca3af', marginBottom: '16px' }}>{showExpired ? 'No budgets found' : 'No active budgets'}</p>
-            <button onClick={() => setShowForm(true)} style={{ padding: '10px 24px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: theme.fontFamily.base }}>Create Your First Budget</button>
+            <button onClick={() => setShowForm(true)} style={{ padding: '10px 24px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: theme.fontFamily }}>Create Your First Budget</button>
           </div>
         ) : (
           <div className="budgets-grid">

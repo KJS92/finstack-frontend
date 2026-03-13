@@ -87,7 +87,7 @@ const Categories: React.FC = () => {
   if (loading) return <div className="categories-container"><p>Loading categories...</p></div>;
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: theme.fontFamily.base }}>
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: theme.fontFamily }}>
       <AppHeader title="Categories" userEmail={userEmail} displayName={displayName} activePage="categories" />
 
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px 16px 80px' }}>
@@ -99,7 +99,6 @@ const Categories: React.FC = () => {
           </div>
         )}
 
-        {/* Page header row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Tag size={20} color={theme.colors.primary} />
@@ -115,14 +114,13 @@ const Categories: React.FC = () => {
               padding: '9px 18px', background: theme.colors.primary,
               color: '#fff', border: 'none', borderRadius: '8px',
               cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-              fontFamily: theme.fontFamily.base,
+              fontFamily: theme.fontFamily,
             }}
           >
             <Plus size={16} /> Add Category
           </button>
         </div>
 
-        {/* Categories grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
           {categories.map(category => (
             <div key={category.id} style={{
@@ -153,7 +151,7 @@ const Categories: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
                 <button
                   onClick={() => handleOpenModal(category)}
-                  style={{ padding: '5px 12px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: theme.fontFamily.base }}
+                  style={{ padding: '5px 12px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: theme.fontFamily }}
                 >
                   Edit
                 </button>
@@ -162,17 +160,17 @@ const Categories: React.FC = () => {
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button
                         onClick={() => handleDelete(category.id)}
-                        style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 700, fontFamily: theme.fontFamily.base }}
+                        style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 700, fontFamily: theme.fontFamily }}
                       >Yes</button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
-                        style={{ padding: '4px 8px', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 600, fontFamily: theme.fontFamily.base }}
+                        style={{ padding: '4px 8px', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 600, fontFamily: theme.fontFamily }}
                       >No</button>
                     </div>
                   ) : (
                     <button
                       onClick={() => handleDelete(category.id)}
-                      style={{ padding: '5px 12px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: theme.fontFamily.base }}
+                      style={{ padding: '5px 12px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: theme.fontFamily }}
                     >
                       Delete
                     </button>
@@ -183,7 +181,6 @@ const Categories: React.FC = () => {
           ))}
         </div>
 
-        {/* Modal */}
         {showModal && (
           <div
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
@@ -204,7 +201,7 @@ const Categories: React.FC = () => {
               <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>Category Name *</label>
-                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Entertainment" style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: theme.fontFamily.base }} />
+                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Entertainment" style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: theme.fontFamily }} />
                 </div>
 
                 <div style={{ marginBottom: '16px' }}>
@@ -247,8 +244,8 @@ const Categories: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                  <button type="button" onClick={handleCloseModal} style={{ padding: '10px 20px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', fontFamily: theme.fontFamily.base, fontWeight: 500 }}>Cancel</button>
-                  <button type="submit" style={{ padding: '10px 20px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: theme.fontFamily.base, fontWeight: 600 }}>{editingCategory ? 'Update' : 'Create'}</button>
+                  <button type="button" onClick={handleCloseModal} style={{ padding: '10px 20px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', fontFamily: theme.fontFamily, fontWeight: 500 }}>Cancel</button>
+                  <button type="submit" style={{ padding: '10px 20px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: theme.fontFamily, fontWeight: 600 }}>{editingCategory ? 'Update' : 'Create'}</button>
                 </div>
               </form>
             </div>
