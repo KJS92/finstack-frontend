@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { budgetService, BudgetWithSpending } from '../services/budgetService';
 import { supabase } from '../config/supabase';
@@ -7,7 +7,7 @@ import './Budgets.css';
 import { alertService } from '../services/alertService';
 import AppHeader from '../components/layout/AppHeader';
 import { theme } from '../theme';
-import { Plus, Wallet, TrendingDown, BarChart2, Edit, Trash2, RefreshCw, RotateCcw, AlertTriangle, AlertCircle, CheckCircle, Package } from 'lucide-react';
+import { Plus, Wallet, TrendingDown, BarChart2, Edit, Trash2, RefreshCw, RotateCcw, AlertTriangle, AlertCircle, Package } from 'lucide-react';
 
 const Budgets: React.FC = () => {
   const navigate = useNavigate();
@@ -16,74 +16,98 @@ const Budgets: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
   const [showExpired, setShowExpired] = useState(false);
+  const [error, setError] = useState('');
+  // Inline confirm state: 'delete:<id>' | 'renew:<id>' | 'reset:<id>' | null
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
-  useEffect(() => { checkUser(); loadBudgets(); checkExpiredBudgets(); }, []);
-
-  const handleEdit = (budget: BudgetWithSpending) => { setEditingBudget(budget); setShowForm(true); };
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) navigate('/auth');
-    else setUserEmail(session.user.email || '');
-  };
-
-  const handleRenew = async (budget: BudgetWithSpending) => {
-    if (window.confirm(`Renew budget for ${budget.category_name}? This will create a new budget for the next period.`)) {
-      try { await budgetService.renewBudget(budget); loadBudgets(); }
-      catch (error: any) { alert('Error: ' + error.message); }
-    }
-  };
-
-  const handleReset = async (budget: BudgetWithSpending) => {
-    if (window.confirm(`Reset budget for ${budget.category_name}? This will clear rollover amounts and start fresh.`)) {
-      try { await budgetService.resetBudget(budget.id); loadBudgets(); }
-      catch (error: any) { alert('Error: ' + error.message); }
-    }
-  };
-
-  const checkExpiredBudgets = async () => {
-    try { await budgetService.checkAndRenewBudgets(); } catch (error) { console.error(error); }
-  };
-
-  const loadBudgets = async () => {
+  const loadBudgets = useCallback(async () => {
     try {
       setLoading(true);
       const [budgetsData, summaryData] = await Promise.all([
         budgetService.getBudgetsWithSpending(),
-        budgetService.getCurrentMonthSummary()
+        budgetService.getCurrentMonthSummary(),
       ]);
       setBudgets(budgetsData);
       setSummary(summaryData);
       await checkBudgetsAndCreateAlerts(budgetsData);
       await budgetService.checkExpiredBudgets();
-    } catch (error) { console.error('Error loading budgets:', error); }
-    finally { setLoading(false); }
-  };
+    } catch (err) {
+      console.error('Error loading budgets:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const checkBudgetsAndCreateAlerts = async (budgets: BudgetWithSpending[]) => {
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { navigate('/auth'); return; }
+      setUserEmail(user.email || '');
+      setDisplayName(user.user_metadata?.full_name || user.email?.split('@')[0] || '');
+      await budgetService.checkAndRenewBudgets().catch(console.error);
+      await loadBudgets();
+    };
+    init();
+  }, [navigate, loadBudgets]);
+
+  // Dismiss inline confirm on Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setConfirmAction(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  const handleEdit = (budget: BudgetWithSpending) => { setEditingBudget(budget); setShowForm(true); };
+
+  const checkBudgetsAndCreateAlerts = async (items: BudgetWithSpending[]) => {
     try {
-      for (const budget of budgets) {
+      for (const budget of items) {
         if (budget.category_name) {
-          await alertService.checkBudgetAndCreateAlerts(budget.id, budget.category_name, budget.spent, budget.amount, budget.alert_threshold || 80);
+          await alertService.checkBudgetAndCreateAlerts(
+            budget.id, budget.category_name, budget.spent, budget.amount, budget.alert_threshold || 80,
+          );
         }
       }
-    } catch (error) { console.error('Error checking budget alerts:', error); }
+    } catch (err) { console.error('Error checking budget alerts:', err); }
+  };
+
+  const handleRenew = async (budget: BudgetWithSpending) => {
+    const key = `renew:${budget.id}`;
+    if (confirmAction !== key) { setConfirmAction(key); return; }
+    setConfirmAction(null);
+    try {
+      await budgetService.renewBudget(budget);
+      await loadBudgets();
+    } catch (err: any) { setError(err.message); }
+  };
+
+  const handleReset = async (budget: BudgetWithSpending) => {
+    const key = `reset:${budget.id}`;
+    if (confirmAction !== key) { setConfirmAction(key); return; }
+    setConfirmAction(null);
+    try {
+      await budgetService.resetBudget(budget.id);
+      await loadBudgets();
+    } catch (err: any) { setError(err.message); }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this budget?')) {
-      try { await budgetService.deleteBudget(id); loadBudgets(); }
-      catch (error) { console.error('Error deleting budget:', error); }
-    }
+    const key = `delete:${id}`;
+    if (confirmAction !== key) { setConfirmAction(key); return; }
+    setConfirmAction(null);
+    try {
+      await budgetService.deleteBudget(id);
+      await loadBudgets();
+    } catch (err: any) { setError(err.message); }
   };
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
   const overallPercentage = summary.totalBudget > 0 ? (summary.totalSpent / summary.totalBudget) * 100 : 0;
-
   const activeBudgets = budgets.filter(b => new Date(b.end_date) >= new Date());
   const expiredBudgets = budgets.filter(b => new Date(b.end_date) < new Date());
   const visibleBudgets = showExpired ? budgets : activeBudgets;
@@ -91,8 +115,17 @@ const Budgets: React.FC = () => {
   if (loading) return <div className="dashboard-container"><p>Loading budgets...</p></div>;
 
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <AppHeader title="Budgets" userEmail={userEmail} activePage="budgets" />
+    <div className="dashboard-container" style={{ fontFamily: theme.fontFamily }}>
+      <AppHeader title="Budgets" userEmail={userEmail} displayName={displayName} activePage="budgets" />
+
+      {error && (
+        <div style={{ maxWidth: '900px', margin: '16px auto 0', padding: '0 16px' }}>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '12px 16px', borderRadius: '8px', fontSize: '14px' }} role="alert">
+            {error}
+            <button onClick={() => setError('')} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 700 }}>✕</button>
+          </div>
+        </div>
+      )}
 
       {/* Unified Summary Card */}
       <div style={{ maxWidth: '900px', margin: '24px auto 0', padding: '0 16px' }}>
@@ -133,7 +166,7 @@ const Budgets: React.FC = () => {
                   background: showExpired ? '#fef3c7' : '#f3f4f6',
                   color: showExpired ? '#92400e' : '#6b7280',
                   border: `1px solid ${showExpired ? '#fde68a' : '#e5e7eb'}`,
-                  borderRadius: '20px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                  borderRadius: '20px', cursor: 'pointer', fontFamily: theme.fontFamily,
                 }}
               >
                 {showExpired ? `Hide Expired (${expiredBudgets.length})` : `Show Expired (${expiredBudgets.length})`}
@@ -147,7 +180,7 @@ const Budgets: React.FC = () => {
               padding: '9px 18px', background: theme.colors.primary,
               color: '#fff', border: 'none', borderRadius: '8px',
               cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: theme.fontFamily,
             }}
           >
             <Plus size={16} /> Create Budget
@@ -160,7 +193,7 @@ const Budgets: React.FC = () => {
         {visibleBudgets.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             <p style={{ color: '#9ca3af', marginBottom: '16px' }}>{showExpired ? 'No budgets found' : 'No active budgets'}</p>
-            <button onClick={() => setShowForm(true)} style={{ padding: '10px 24px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>Create Your First Budget</button>
+            <button onClick={() => setShowForm(true)} style={{ padding: '10px 24px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: theme.fontFamily }}>Create Your First Budget</button>
           </div>
         ) : (
           <div className="budgets-grid">
@@ -214,9 +247,17 @@ const Budgets: React.FC = () => {
                       <button onClick={() => handleEdit(budget)} className="btn-edit" title="Edit" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Edit size={14} />
                       </button>
-                      <button onClick={() => handleDelete(budget.id)} className="btn-delete" title="Delete" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Trash2 size={14} />
-                      </button>
+                      {confirmAction === `delete:${budget.id}` ? (
+                        <div className="confirm-delete">
+                          <span>Delete?</span>
+                          <button onClick={() => handleDelete(budget.id)} className="btn-confirm-yes">Yes</button>
+                          <button onClick={() => setConfirmAction(null)} className="btn-confirm-no">No</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => handleDelete(budget.id)} className="btn-delete" title="Delete" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -248,12 +289,28 @@ const Budgets: React.FC = () => {
                     </div>
                     {isExpired && (
                       <div className="budget-quick-actions">
-                        <button onClick={() => handleRenew(budget)} className="btn-renew" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                          <RefreshCw size={13} /> Renew for Next Period
-                        </button>
-                        <button onClick={() => handleReset(budget)} className="btn-reset" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                          <RotateCcw size={13} /> Reset Budget
-                        </button>
+                        {confirmAction === `renew:${budget.id}` ? (
+                          <div className="confirm-delete">
+                            <span>Renew?</span>
+                            <button onClick={() => handleRenew(budget)} className="btn-confirm-yes">Yes</button>
+                            <button onClick={() => setConfirmAction(null)} className="btn-confirm-no">No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => handleRenew(budget)} className="btn-renew" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <RefreshCw size={13} /> Renew for Next Period
+                          </button>
+                        )}
+                        {confirmAction === `reset:${budget.id}` ? (
+                          <div className="confirm-delete">
+                            <span>Reset?</span>
+                            <button onClick={() => handleReset(budget)} className="btn-confirm-yes">Yes</button>
+                            <button onClick={() => setConfirmAction(null)} className="btn-confirm-no">No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => handleReset(budget)} className="btn-reset" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <RotateCcw size={13} /> Reset Budget
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
