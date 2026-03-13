@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import './Toast.css';
 
 interface ToastProps {
@@ -16,9 +17,16 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 3000 }
   }, [duration, onClose]);
 
   return createPortal(
-    <div className={`toast toast-${type}`}>
+    <div
+      className={`toast toast-${type}`}
+      role="alert"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <span>{message}</span>
-      <button onClick={onClose} className="toast-close" aria-label="Dismiss">×</button>
+      <button onClick={onClose} className="toast-close" aria-label="Dismiss notification">
+        <X size={16} />
+      </button>
     </div>,
     document.body
   );
