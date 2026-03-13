@@ -24,7 +24,8 @@ export const theme = {
     textMuted: '#9CA3AF',
 
     // Buttons
-    btnPrimary: '#0F172A',
+    // btnPrimary uses brand green for consistent CTAs throughout the app
+    btnPrimary: '#16A34A',
     btnPrimaryText: '#FFFFFF',
     btnDanger: '#FFF1F2',
     btnDangerText: '#E11D48',
@@ -66,5 +67,16 @@ export const theme = {
   shadows: {
     card: '0 1px 3px rgba(0,0,0,0.06)',
     none: 'none',
+  },
+
+  // Centralised font family — use instead of hardcoding 'Inter, sans-serif'
+  fontFamily: {
+    base: "Inter, sans-serif",
+  },
+
+  // Centralised transition — use for hover/active states
+  transition: {
+    fast: 'all 0.15s ease',
+    medium: 'all 0.25s ease',
   },
 };
