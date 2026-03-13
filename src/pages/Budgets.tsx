@@ -20,7 +20,6 @@ const Budgets: React.FC = () => {
   const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
   const [showExpired, setShowExpired] = useState(false);
   const [error, setError] = useState('');
-  // Inline confirm state: 'delete:<id>' | 'renew:<id>' | 'reset:<id>' | null
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
   const loadBudgets = useCallback(async () => {
@@ -53,7 +52,6 @@ const Budgets: React.FC = () => {
     init();
   }, [navigate, loadBudgets]);
 
-  // Dismiss inline confirm on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setConfirmAction(null); };
     document.addEventListener('keydown', onKey);
@@ -115,7 +113,7 @@ const Budgets: React.FC = () => {
   if (loading) return <div className="dashboard-container"><p>Loading budgets...</p></div>;
 
   return (
-    <div className="dashboard-container" style={{ fontFamily: theme.fontFamily }}>
+    <div className="dashboard-container" style={{ fontFamily: theme.fontFamily.base }}>
       <AppHeader title="Budgets" userEmail={userEmail} displayName={displayName} activePage="budgets" />
 
       {error && (
@@ -166,7 +164,7 @@ const Budgets: React.FC = () => {
                   background: showExpired ? '#fef3c7' : '#f3f4f6',
                   color: showExpired ? '#92400e' : '#6b7280',
                   border: `1px solid ${showExpired ? '#fde68a' : '#e5e7eb'}`,
-                  borderRadius: '20px', cursor: 'pointer', fontFamily: theme.fontFamily,
+                  borderRadius: '20px', cursor: 'pointer', fontFamily: theme.fontFamily.base,
                 }}
               >
                 {showExpired ? `Hide Expired (${expiredBudgets.length})` : `Show Expired (${expiredBudgets.length})`}
@@ -180,7 +178,7 @@ const Budgets: React.FC = () => {
               padding: '9px 18px', background: theme.colors.primary,
               color: '#fff', border: 'none', borderRadius: '8px',
               cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-              fontFamily: theme.fontFamily,
+              fontFamily: theme.fontFamily.base,
             }}
           >
             <Plus size={16} /> Create Budget
@@ -193,7 +191,7 @@ const Budgets: React.FC = () => {
         {visibleBudgets.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             <p style={{ color: '#9ca3af', marginBottom: '16px' }}>{showExpired ? 'No budgets found' : 'No active budgets'}</p>
-            <button onClick={() => setShowForm(true)} style={{ padding: '10px 24px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: theme.fontFamily }}>Create Your First Budget</button>
+            <button onClick={() => setShowForm(true)} style={{ padding: '10px 24px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: theme.fontFamily.base }}>Create Your First Budget</button>
           </div>
         ) : (
           <div className="budgets-grid">
