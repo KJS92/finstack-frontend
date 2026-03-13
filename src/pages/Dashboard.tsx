@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { accountService, Account } from '../services/accountService';
@@ -18,9 +18,9 @@ const formatINR = (amount: number) =>
 
 const getGreeting = () => {
   const h = new Date().getHours();
-  if (h < 12) return { text: 'Good morning', emoji: '☀️' };
-  if (h < 17) return { text: 'Good afternoon', emoji: '🌤️' };
-  return { text: 'Good evening', emoji: '🌙' };
+  if (h < 12) return { text: 'Good morning', emoji: '\u2600\uFE0F' };
+  if (h < 17) return { text: 'Good afternoon', emoji: '\uD83C\uDF24\uFE0F' };
+  return { text: 'Good evening', emoji: '\uD83C\uDF19' };
 };
 
 const Card: React.FC<{ children: React.ReactNode; padding?: string; accentColor?: string; style?: React.CSSProperties }> = ({ children, padding = theme.spacing.md, accentColor, style }) => (
@@ -43,38 +43,15 @@ const Dashboard: React.FC = () => {
   const [upcomingDues, setUpcomingDues] = useState<UpcomingDue[]>([]);
   const [loading, setLoading] = useState(true);
   const lastLoadTime = useRef<number>(0);
-  const [initialLoaded, setInitialLoaded] = useState(false);
+  const initialLoaded = useRef(false);
 
-  useEffect(() => {
-    checkUser();
-    loadDashboardData().then(() => { setInitialLoaded(true); lastLoadTime.current = Date.now(); });
-  }, []);
-
-  useEffect(() => {
-    if (initialLoaded) { loadDashboardData(); lastLoadTime.current = Date.now(); }
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const handleFocus = () => {
-      if (Date.now() - lastLoadTime.current > 5 * 60 * 1000) { loadDashboardData(); lastLoadTime.current = Date.now(); }
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) navigate('/auth');
-    else setUserEmail(session.user.email || '');
-  };
-
-  const loadDashboardData = async () => {
+  // Single data loader — handles auth redirect, display name, and all data
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { navigate('/auth'); return; }
 
-      // Display name from metadata
       setDisplayName(user.user_metadata?.full_name || user.email?.split('@')[0] || '');
       setUserEmail(user.email || '');
 
@@ -119,22 +96,55 @@ const Dashboard: React.FC = () => {
         setUpcomingDues(dueData || []);
       } catch (_) {}
 
-    } catch (err) { console.error('Error loading dashboard:', err); }
-    finally { setLoading(false); }
-  };
+    } catch (err) {
+      console.error('Error loading dashboard:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
 
-  const handleAccountClick = (account: Account) => navigate('/transactions-list', { state: { accountId: account.id, accountName: account.name } });
+  // Initial load
+  useEffect(() => {
+    loadDashboardData().then(() => {
+      initialLoaded.current = true;
+      lastLoadTime.current = Date.now();
+    });
+  }, [loadDashboardData]);
+
+  // Reload on route revisit (but not on first mount — handled above)
+  useEffect(() => {
+    if (initialLoaded.current) {
+      loadDashboardData();
+      lastLoadTime.current = Date.now();
+    }
+  }, [location.pathname, loadDashboardData]);
+
+  // Reload after 5 min of inactivity when window regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (Date.now() - lastLoadTime.current > 5 * 60 * 1000) {
+        loadDashboardData();
+        lastLoadTime.current = Date.now();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [loadDashboardData]);
+
+  const handleAccountClick = useCallback((account: Account) => {
+    navigate('/transactions-list', { state: { accountId: account.id, accountName: account.name } });
+  }, [navigate]);
 
   const maxSpend = Math.max(...categorySpend.map(c => c.total), 1);
   const greeting = getGreeting();
 
   if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Inter, sans-serif', color: theme.colors.textSecondary }}>Loading...</div>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: theme.fontFamily.base, color: theme.colors.textSecondary }}>Loading...</div>
   );
 
   return (
-    <div style={{ backgroundColor: theme.colors.background, minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
-      <AppHeader title="Dashboard" userEmail={userEmail} activePage="dashboard" />
+    <div style={{ backgroundColor: theme.colors.background, minHeight: '100vh', fontFamily: theme.fontFamily.base }}>
+      <AppHeader title="Dashboard" userEmail={userEmail} displayName={displayName} activePage="dashboard" />
 
       <div style={{ padding: '20px 16px 80px', maxWidth: '640px', margin: '0 auto' }}>
 
@@ -157,7 +167,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           <p style={{ margin: '10px 0 0', fontSize: theme.fontSizes.caption, color: theme.colors.textMuted }}>
-            Across {accounts.length} account{accounts.length !== 1 ? 's' : ''} · Updated just now
+            Across {accounts.length} account{accounts.length !== 1 ? 's' : ''} &middot; Updated just now
           </p>
         </Card>
 
@@ -187,8 +197,8 @@ const Dashboard: React.FC = () => {
         {rpSummary && (rpSummary.totalReceivable > 0 || rpSummary.totalPayable > 0) && (
           <Card style={{ marginBottom: '16px', padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <p style={{ color: theme.colors.textPrimary, fontSize: theme.fontSizes.heading2, fontWeight: theme.fontWeights.semibold, margin: 0 }}>Receivables & Payables</p>
-              <button onClick={() => navigate('/receivables')} style={{ background: 'none', border: 'none', color: theme.colors.primary, fontSize: theme.fontSizes.label, cursor: 'pointer', fontWeight: theme.fontWeights.medium }}>View all →</button>
+              <p style={{ color: theme.colors.textPrimary, fontSize: theme.fontSizes.heading2, fontWeight: theme.fontWeights.semibold, margin: 0 }}>Receivables &amp; Payables</p>
+              <button onClick={() => navigate('/receivables')} style={{ background: 'none', border: 'none', color: theme.colors.primary, fontSize: theme.fontSizes.label, cursor: 'pointer', fontWeight: theme.fontWeights.medium, fontFamily: theme.fontFamily.base }}>View all &rarr;</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ background: '#f0fdf4', borderRadius: theme.radius.md, padding: '12px', border: '1px solid #bbf7d0' }}>
@@ -219,7 +229,7 @@ const Dashboard: React.FC = () => {
                 <Calendar size={16} color={theme.colors.primary} />
                 <p style={{ color: theme.colors.textPrimary, fontSize: theme.fontSizes.heading2, fontWeight: theme.fontWeights.semibold, margin: 0 }}>Due This Week</p>
               </div>
-              <button onClick={() => navigate('/receivables')} style={{ background: 'none', border: 'none', color: theme.colors.primary, fontSize: theme.fontSizes.label, cursor: 'pointer', fontWeight: theme.fontWeights.medium }}>View all →</button>
+              <button onClick={() => navigate('/receivables')} style={{ background: 'none', border: 'none', color: theme.colors.primary, fontSize: theme.fontSizes.label, cursor: 'pointer', fontWeight: theme.fontWeights.medium, fontFamily: theme.fontFamily.base }}>View all &rarr;</button>
             </div>
             {upcomingDues.map((due, i) => (
               <div key={due.id}>
@@ -229,7 +239,7 @@ const Dashboard: React.FC = () => {
                     <div>
                       <p style={{ color: theme.colors.textPrimary, fontSize: theme.fontSizes.body, fontWeight: theme.fontWeights.medium, margin: '0 0 2px' }}>{due.title}</p>
                       <p style={{ color: theme.colors.textMuted, fontSize: theme.fontSizes.caption, margin: 0 }}>
-                        {due.contact_name && `${due.contact_name} · `}
+                        {due.contact_name && `${due.contact_name} \u00b7 `}
                         {new Date(due.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </p>
                     </div>
@@ -254,17 +264,24 @@ const Dashboard: React.FC = () => {
         <Card style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <p style={{ color: theme.colors.textPrimary, fontSize: theme.fontSizes.heading2, fontWeight: theme.fontWeights.semibold, margin: 0 }}>Accounts</p>
-            <button onClick={() => navigate('/accounts')} style={{ background: 'none', border: 'none', color: theme.colors.primary, fontSize: theme.fontSizes.label, cursor: 'pointer', fontWeight: theme.fontWeights.medium }}>View all →</button>
+            <button onClick={() => navigate('/accounts')} style={{ background: 'none', border: 'none', color: theme.colors.primary, fontSize: theme.fontSizes.label, cursor: 'pointer', fontWeight: theme.fontWeights.medium, fontFamily: theme.fontFamily.base }}>View all &rarr;</button>
           </div>
           {accounts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <p style={{ color: theme.colors.textSecondary, marginBottom: '12px' }}>No accounts yet</p>
-              <button onClick={() => navigate('/accounts')} style={{ backgroundColor: theme.colors.btnPrimary, color: '#fff', border: 'none', borderRadius: theme.radius.md, padding: '10px 20px', cursor: 'pointer', fontWeight: theme.fontWeights.semibold }}>Add First Account</button>
+              <button onClick={() => navigate('/accounts')} style={{ backgroundColor: theme.colors.btnPrimary, color: '#fff', border: 'none', borderRadius: theme.radius.md, padding: '10px 20px', cursor: 'pointer', fontWeight: theme.fontWeights.semibold, fontFamily: theme.fontFamily.base }}>Add First Account</button>
             </div>
           ) : (
             accounts.slice(0, 4).map((account, i) => (
               <div key={account.id}>
-                <div onClick={() => handleAccountClick(account)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', cursor: 'pointer', borderLeft: `3px solid ${account.color || theme.colors.primary}`, paddingLeft: '12px' }}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleAccountClick(account)}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleAccountClick(account)}
+                  aria-label={`View transactions for ${account.name}`}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0 12px 12px', cursor: 'pointer', borderLeft: `3px solid ${account.color || theme.colors.primary}` }}
+                >
                   <div>
                     <p style={{ color: theme.colors.textPrimary, fontWeight: theme.fontWeights.medium, fontSize: theme.fontSizes.body, margin: '0 0 2px' }}>{account.name}</p>
                     <p style={{ color: theme.colors.textMuted, fontSize: theme.fontSizes.caption, margin: 0, textTransform: 'capitalize' }}>{account.type.replace('_', ' ')}</p>
@@ -300,7 +317,7 @@ const Dashboard: React.FC = () => {
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <p style={{ color: theme.colors.textPrimary, fontSize: theme.fontSizes.heading2, fontWeight: theme.fontWeights.semibold, margin: 0 }}>Recent Transactions</p>
-              <button onClick={() => navigate('/transactions-list')} style={{ background: 'none', border: 'none', color: theme.colors.primary, fontSize: theme.fontSizes.label, cursor: 'pointer', fontWeight: theme.fontWeights.medium }}>View all →</button>
+              <button onClick={() => navigate('/transactions-list')} style={{ background: 'none', border: 'none', color: theme.colors.primary, fontSize: theme.fontSizes.label, cursor: 'pointer', fontWeight: theme.fontWeights.medium, fontFamily: theme.fontFamily.base }}>View all &rarr;</button>
             </div>
             {recentTxns.map((txn, i) => (
               <div key={txn.id}>
@@ -308,7 +325,7 @@ const Dashboard: React.FC = () => {
                   <div>
                     <p style={{ color: theme.colors.textPrimary, fontSize: theme.fontSizes.body, fontWeight: theme.fontWeights.medium, margin: '0 0 2px' }}>{txn.description}</p>
                     <p style={{ color: theme.colors.textMuted, fontSize: theme.fontSizes.caption, margin: 0, textTransform: 'capitalize' }}>
-                      {txn.category} · {new Date(txn.transaction_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      {txn.category} &middot; {new Date(txn.transaction_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                   <span style={{ color: txn.transaction_type === 'credit' ? theme.colors.income : theme.colors.expense, fontWeight: theme.fontWeights.semibold, fontSize: theme.fontSizes.body }}>
