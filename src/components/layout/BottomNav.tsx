@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight,
@@ -24,6 +24,8 @@ const moreNav = [
   { label: 'Profile',      path: '/profile',      icon: User },
 ];
 
+const MORE_NAV_PATHS = new Set(moreNav.map(i => i.path));
+
 const BottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +36,11 @@ const BottomNav: React.FC = () => {
     return location.pathname === path;
   };
 
-  const isMoreActive = moreNav.some(item => location.pathname === item.path);
+  // Memoised — only recomputes when pathname changes
+  const isMoreActive = useMemo(
+    () => MORE_NAV_PATHS.has(location.pathname),
+    [location.pathname]
+  );
 
   const handleNavClick = (path: string | null) => {
     if (!path) {
@@ -45,18 +51,24 @@ const BottomNav: React.FC = () => {
     navigate(path);
   };
 
+  const closeDrawer = useCallback(() => setShowMore(false), []);
+
+  const handleDrawerKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') closeDrawer();
+  }, [closeDrawer]);
+
   return (
     <>
-      {/* ── More Drawer ───────────────────────────────── */}
+      {/* ── More Drawer ───────────────────────────────────────────── */}
       {showMore && (
         <>
           {/* Backdrop */}
           <div
-            onClick={() => setShowMore(false)}
+            onClick={closeDrawer}
             role="button"
-            aria-label="Close menu"         // ✅ Added
+            aria-label="Close menu"
             tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && setShowMore(false)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === 'Escape') && closeDrawer()}
             style={{
               position: 'fixed',
               inset: 0,
@@ -68,7 +80,9 @@ const BottomNav: React.FC = () => {
           {/* Drawer */}
           <div
             role="dialog"
-            aria-label="More navigation options"   // ✅ Added
+            aria-label="More navigation options"
+            aria-modal="true"
+            onKeyDown={handleDrawerKeyDown}
             style={{
               position: 'fixed',
               bottom: '64px',
@@ -79,7 +93,7 @@ const BottomNav: React.FC = () => {
               borderRadius: '20px 20px 0 0',
               padding: '20px 16px',
               zIndex: 150,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: theme.fontFamily.base,
             }}>
             {/* Drawer handle */}
             <div style={{
@@ -92,8 +106,8 @@ const BottomNav: React.FC = () => {
 
             {/* Close button */}
             <button
-              onClick={() => setShowMore(false)}
-              aria-label="Close more menu"    // ✅ Added
+              onClick={closeDrawer}
+              aria-label="Close more menu"
               style={{
                 position: 'absolute',
                 top: '16px',
@@ -132,8 +146,8 @@ const BottomNav: React.FC = () => {
                   <button
                     key={item.path}
                     onClick={() => handleNavClick(item.path)}
-                    aria-label={`Go to ${item.label}`}    // ✅ Added
-                    aria-current={active ? 'page' : undefined}  // ✅ Added
+                    aria-label={`Go to ${item.label}`}
+                    aria-current={active ? 'page' : undefined}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -147,8 +161,9 @@ const BottomNav: React.FC = () => {
                         : theme.colors.border}`,
                       borderRadius: theme.radius.lg,
                       cursor: 'pointer',
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: theme.fontFamily.base,
                       textAlign: 'left',
+                      transition: theme.transition.fast,
                     }}
                   >
                     <Icon
@@ -176,9 +191,9 @@ const BottomNav: React.FC = () => {
         </>
       )}
 
-      {/* ── Bottom Nav Bar ────────────────────────────── */}
+      {/* ── Bottom Nav Bar ──────────────────────────────────────────── */}
       <nav
-        aria-label="Main navigation"    // ✅ Added
+        aria-label="Main navigation"
         style={{
           position: 'fixed',
           bottom: 0,
@@ -191,7 +206,7 @@ const BottomNav: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'space-around',
           zIndex: 200,
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: theme.fontFamily.base,
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
         className="bottom-nav"
@@ -208,7 +223,7 @@ const BottomNav: React.FC = () => {
               <button
                 key="add"
                 onClick={() => handleNavClick(item.path)}
-                aria-label="Add new transaction"   // ✅ Added
+                aria-label="Add new transaction"
                 style={{
                   width: '48px',
                   height: '48px',
@@ -232,8 +247,8 @@ const BottomNav: React.FC = () => {
             <button
               key={item.label}
               onClick={() => handleNavClick(item.path)}
-              aria-label={`Go to ${item.label}`}         // ✅ Added
-              aria-current={active ? 'page' : undefined} // ✅ Added
+              aria-label={`Go to ${item.label}`}
+              aria-current={active ? 'page' : undefined}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
