@@ -23,16 +23,20 @@ if (splash) {
   }, 800);
 }
 
-// ✅ Service Worker Registration
+// Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('%PUBLIC_URL%/service-worker.js')
       .then((registration) => {
-        console.log('SW registered:', registration);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('SW registered:', registration);
+        }
       })
       .catch((error) => {
-        console.log('SW registration failed:', error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('SW registration failed:', error);
+        }
       });
   });
 }

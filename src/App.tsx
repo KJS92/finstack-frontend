@@ -3,25 +3,26 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { supabase } from './config/supabase';
 import BottomNav from './components/layout/BottomNav';
 import { WifiOff, Smartphone } from 'lucide-react';
+import { theme } from './theme';
 import './App.css';
 
-const Auth             = lazy(() => import('./pages/Auth'));
-const Dashboard        = lazy(() => import('./pages/Dashboard'));
-const Accounts         = lazy(() => import('./pages/Accounts'));
-const Profile          = lazy(() => import('./pages/Profile'));
-const Transactions     = lazy(() => import('./pages/Transactions'));
+const Auth               = lazy(() => import('./pages/Auth'));
+const Dashboard          = lazy(() => import('./pages/Dashboard'));
+const Accounts           = lazy(() => import('./pages/Accounts'));
+const Profile            = lazy(() => import('./pages/Profile'));
+const Transactions       = lazy(() => import('./pages/Transactions'));
 const TransactionPreview = lazy(() => import('./pages/TransactionPreview'));
-const TransactionsList = lazy(() => import('./pages/TransactionsList'));
-const PasswordReset    = lazy(() => import('./pages/PasswordReset'));
-const UpdatePassword   = lazy(() => import('./pages/UpdatePassword'));
-const AuthHandler      = lazy(() => import('./components/AuthHandler'));
-const AddTransaction   = lazy(() => import('./pages/AddTransaction'));
-const Categories       = lazy(() => import('./pages/Categories'));
-const Budgets          = lazy(() => import('./pages/Budgets'));
-const Reports          = lazy(() => import('./pages/Reports'));
+const TransactionsList   = lazy(() => import('./pages/TransactionsList'));
+const PasswordReset      = lazy(() => import('./pages/PasswordReset'));
+const UpdatePassword     = lazy(() => import('./pages/UpdatePassword'));
+const AuthHandler        = lazy(() => import('./components/AuthHandler'));
+const AddTransaction     = lazy(() => import('./pages/AddTransaction'));
+const Categories         = lazy(() => import('./pages/Categories'));
+const Budgets            = lazy(() => import('./pages/Budgets'));
+const Reports            = lazy(() => import('./pages/Reports'));
 const ReceivablesPayables = lazy(() => import('./pages/ReceivablesPayables'));
-const Assets           = lazy(() => import('./pages/Assets'));
-const AdminPanel       = lazy(() => import('./pages/AdminPanel'));
+const Assets             = lazy(() => import('./pages/Assets'));
+const AdminPanel         = lazy(() => import('./pages/AdminPanel'));
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => void;
@@ -29,6 +30,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 function RootRedirect() {
+  // During a password-recovery flow the hash is processed by AuthHandler
   const hash = window.location.hash;
   if (hash && hash.includes('type=recovery')) return null;
   return <Navigate to="/auth" replace />;
@@ -45,13 +47,20 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  if (status === 'loading') return null;
+  // Show loading screen instead of null to avoid invisible blank flash
+  if (status === 'loading') return <LoadingScreen />;
   if (status === 'denied') return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
 const LoadingScreen = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', fontSize: '20px' }}>
+  <div style={{
+    display: 'flex', justifyContent: 'center', alignItems: 'center',
+    height: '100vh',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white', fontSize: '20px',
+    fontFamily: theme.fontFamily.base,
+  }}>
     Loading...
   </div>
 );
@@ -97,18 +106,36 @@ function App() {
     if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstallBanner(false);
+    // Hide banner whether user accepted or dismissed
+    setShowInstallBanner(false);
     setInstallPrompt(null);
   };
 
   if (loading) return <LoadingScreen />;
 
   if (!isOnline) return (
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f9fafb', color: '#374151', textAlign: 'center', padding: '24px' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+      alignItems: 'center', height: '100vh', background: '#f9fafb',
+      color: '#374151', textAlign: 'center', padding: '24px',
+      fontFamily: theme.fontFamily.base,
+    }}>
       <WifiOff size={64} color="#9ca3af" style={{ marginBottom: '16px' }} />
-      <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>You&apos;re Offline</h2>
-      <p style={{ fontSize: '15px', color: '#6b7280', maxWidth: '280px' }}>No internet connection. Please check your network and try again.</p>
-      <button onClick={() => window.location.reload()} style={{ marginTop: '24px', padding: '12px 24px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>Retry</button>
+      <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px', fontFamily: theme.fontFamily.base }}>You&apos;re Offline</h2>
+      <p style={{ fontSize: '15px', color: '#6b7280', maxWidth: '280px', fontFamily: theme.fontFamily.base }}>
+        No internet connection. Please check your network and try again.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          marginTop: '24px', padding: '12px 24px', background: '#22c55e',
+          color: 'white', border: 'none', borderRadius: '8px',
+          fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+          fontFamily: theme.fontFamily.base,
+        }}
+      >
+        Retry
+      </button>
     </div>
   );
 
@@ -120,17 +147,35 @@ function App() {
         </Suspense>
 
         {showInstallBanner && (
-          <div style={{ position: 'fixed', bottom: BANNER_BOTTOM_OFFSET, left: '16px', right: '16px', background: '#1f2937', color: 'white', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+          <div style={{
+            position: 'fixed', bottom: BANNER_BOTTOM_OFFSET, left: '16px', right: '16px',
+            background: '#1f2937', color: 'white', borderRadius: '12px', padding: '16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            fontFamily: theme.fontFamily.base,
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Smartphone size={20} color="#9ca3af" />
               <div>
-                <div style={{ fontWeight: 700, fontSize: '14px' }}>Install FinStack</div>
-                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Add to home screen for the best experience</div>
+                <div style={{ fontWeight: 700, fontSize: '14px', fontFamily: theme.fontFamily.base }}>Install FinStack</div>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px', fontFamily: theme.fontFamily.base }}>
+                  Add to home screen for the best experience
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setShowInstallBanner(false)} style={{ background: 'transparent', color: '#9ca3af', border: 'none', fontSize: '13px', cursor: 'pointer' }}>Later</button>
-              <button onClick={handleInstall} style={{ background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Install</button>
+              <button
+                onClick={() => setShowInstallBanner(false)}
+                style={{ background: 'transparent', color: '#9ca3af', border: 'none', fontSize: '13px', cursor: 'pointer', fontFamily: theme.fontFamily.base }}
+              >
+                Later
+              </button>
+              <button
+                onClick={handleInstall}
+                style={{ background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: theme.fontFamily.base }}
+              >
+                Install
+              </button>
             </div>
           </div>
         )}
